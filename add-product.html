@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>เพิ่มสินค้าใหม่ - ขอนแก่น มาร์เก็ตเพลส</title>
+    <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Chakra Petch', sans-serif; padding: 20px; background: #f4f7f6; display: flex; justify-content: center; }
+        .card { background: white; padding: 30px; border-radius: 16px; width: 100%; max-width: 500px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        h2 { color: #fd7e14; margin-top: 0; }
+        input, textarea { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-family: inherit;}
+        button { width: 100%; padding: 12px; margin-top: 10px; background: #28a745; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 16px;}
+        button:disabled { background: #ccc; }
+        .back-link { display: block; text-align: center; margin-top: 15px; color: #666; text-decoration: none; font-size: 14px; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h2>เพิ่มสินค้าใหม่</h2>
+        <input type="text" id="prodName" placeholder="ชื่อสินค้า">
+        <textarea id="prodDesc" rows="3" placeholder="รายละเอียดสินค้า"></textarea>
+        <input type="number" id="prodPrice" placeholder="ราคา (บาท)">
+        <input type="number" id="prodStock" placeholder="จำนวนในสต็อก">
+        
+        <button id="btn-add-product">บันทึกสินค้าลงร้าน</button>
+        <a href="dashboard.html" class="back-link">← กลับไปหน้า Dashboard</a>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-app.js";
+        import { getAuth } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-auth.js";
+        import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-firestore.js";
+
+        // *** ใส่ Config ของคุณตรงนี้ ***
+        const firebaseConfig = { /* ใส่ Config เดิมของคุณ */ };
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        document.getElementById('btn-add-product').onclick = async () => {
+            const user = auth.currentUser;
+            if (!user) return alert("กรุณาล็อกอินก่อน");
+
+            const name = document.getElementById('prodName').value;
+            const desc = document.getElementById('prodDesc').value;
+            const price = parseFloat(document.getElementById('prodPrice').value);
+            const stock = parseInt(document.getElementById('prodStock').value);
+
+            if(!name || !price) return alert("กรุณากรอกชื่อและราคาให้ครบ");
+
+            const btn = document.getElementById('btn-add-product');
+            btn.disabled = true;
+            btn.innerText = "กำลังบันทึก...";
+
+            try {
+                // บันทึกลง collection 'products'
+                await addDoc(collection(db, "products"), {
+                    name: name,
+                    description: desc,
+                    price: price,
+                    stock: stock,
+                    owner_uid: user.uid, // สำคัญมาก: เพื่อให้ Firestore Rules ยอมรับ
+                    created_at: new Date()
+                });
+                alert("เพิ่มสินค้าสำเร็จ!");
+                window.location.href = "dashboard.html";
+            } catch (e) {
+                alert("เกิดข้อผิดพลาด: " + e.message);
+                console.error(e);
+            } finally {
+                btn.disabled = false;
+                btn.innerText = "บันทึกสินค้าลงร้าน";
+            }
+        };
+    </script>
+</body>
+</html>
