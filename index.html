@@ -53,6 +53,7 @@
         import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-auth.js";
         import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-firestore.js";
 
+        // *** อย่าลืมเช็คว่า apiKey และ projectId ตรงกับของเดิมของคุณ ***
         const firebaseConfig = {
             apiKey: "AIzaSyBCtuNjcjOmDS1Luwg4-B5VoMrnFvlAUFI",
             authDomain: "marketplace-3c894.firebaseapp.com",
@@ -67,9 +68,14 @@
         const db = getFirestore(app);
         const provider = new GoogleAuthProvider();
 
-        // เช็คว่าถ้าล็อกอินอยู่แล้ว ให้ข้ามไปหน้า Dashboard เลย
-        onAuthStateChanged(auth, (user) => {
-            if (user) window.location.href = "dashboard.html";
+        // แก้ไข: เช็คว่าถ้ามีข้อมูลใน Firestore แล้วถึงจะเด้งไป Dashboard (ป้องกันการเด้งก่อนเขียนข้อมูล)
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                const docSnap = await getDoc(doc(db, "users", user.uid));
+                if (docSnap.exists()) {
+                    window.location.href = "dashboard.html";
+                }
+            }
         });
 
         const khonKaenPolygon = [[101.748, 16.862], [102.835, 16.850], [103.180, 16.300], [102.650, 15.630], [101.850, 15.700], [101.748, 16.862]];
@@ -99,7 +105,7 @@
                         btnRetry.style.display = 'block';
                     }
                 },
-                (err) => { statusText.innerText = "กรุณาเปิด GPS"; btnRetry.style.display = 'block'; },
+                (err) => { statusText.innerText = "กรุณาเปิด GPS หรืออนุญาตการเข้าถึงตำแหน่ง"; btnRetry.style.display = 'block'; },
                 { enableHighAccuracy: true }
             );
         }
@@ -107,9 +113,26 @@
         document.getElementById('btn-retry-location').onclick = checkLocation;
 
         const getRole = () => document.querySelector('input[name="role"]:checked').value;
+        
+        // แก้ไข: เพิ่มการแจ้งเตือนถ้าเซฟไม่สำเร็จ
         async function saveUser(user, role) {
-            const userRef = doc(db, "users", user.uid);
-            if (!(await getDoc(userRef)).exists()) await setDoc(userRef, { uid: user.uid, email: user.email, role: role, name: user.displayName || "ผู้ใช้ใหม่" });
+            try {
+                const userRef = doc(db, "users", user.uid);
+                const docSnap = await getDoc(userRef);
+                if (!docSnap.exists()) {
+                    await setDoc(userRef, { 
+                        uid: user.uid, 
+                        email: user.email, 
+                        role: role, 
+                        name: user.displayName || "ผู้ใช้ใหม่" 
+                    });
+                    console.log("บันทึกข้อมูลและ Role สำเร็จ!");
+                }
+            } catch (error) {
+                console.error("เกิดข้อผิดพลาดในการบันทึกข้อมูล:", error);
+                alert("ไม่สามารถบันทึกข้อมูลผู้ใช้ลงฐานข้อมูลได้");
+                throw error; // ยกเลิกการทำงานต่อไปถ้าเซฟไม่ผ่าน
+            }
         }
 
         document.getElementById('btn-email-signup').onclick = async () => {
@@ -118,10 +141,15 @@
             try {
                 const cred = await createUserWithEmailAndPassword(auth, email, password);
                 await saveUser(cred.user, getRole());
-                window.location.href = "dashboard.html";
+                window.location.href = "dashboard.html"; // เปลี่ยนหน้าหลังจากบันทึกเสร็จ
             } catch (err) {
                 if(err.code === 'auth/email-already-in-use') {
-                    try { await signInWithEmailAndPassword(auth, email, password); window.location.href = "dashboard.html"; } 
+                    try { 
+                        const cred = await signInWithEmailAndPassword(auth, email, password); 
+                        // แม้จะล็อกอินก็เช็คเผื่อไว้ว่าเคยมีข้อมูลใน Firestore ไหม
+                        await saveUser(cred.user, getRole()); 
+                        window.location.href = "dashboard.html"; 
+                    } 
                     catch (e) { alert("รหัสผ่านไม่ถูกต้อง"); }
                 } else alert(err.message);
             }
@@ -130,9 +158,14 @@
         document.getElementById('btn-google-signin').onclick = async () => {
             try {
                 const result = await signInWithPopup(auth, provider);
-                await saveUser(result.user, getRole());
-                window.location.href = "dashboard.html";
-            } catch (err) { alert("ยกเลิกการเข้าสู่ระบบ"); }
+                await saveUser(result.user, getRole()); // รอให้เซฟ Firestore เสร็จก่อน
+                window.location.href = "dashboard.html"; // เปลี่ยนหน้าหลังจากบันทึกเสร็จเท่านั้น
+            } catch (err) { 
+                console.error(err);
+                if (err.code !== 'auth/popup-closed-by-user') {
+                    alert("เกิดข้อผิดพลาดในการเข้าสู่ระบบ"); 
+                }
+            }
         };
     </script>
 </body>
