@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>เข้าสู่ระบบ - ขอนแก่น มาร์เก็ตเพลส</title>
+    <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        :root { --primary-color: #007BFF; --secondary-color: #00BFFF; --bg-color: #F4F7F6; --text-color: #333; }
+        body { font-family: 'Chakra Petch', sans-serif; background-color: var(--bg-color); color: var(--text-color); display: flex; flex-direction: column; justify-content: center; align-items: center; min-height: 100vh; margin: 0; padding: 20px; box-sizing: border-box; }
+        #location-status-card, #login-section { background: white; padding: 30px 20px; border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); width: 100%; max-width: 400px; text-align: center; }
+        #login-section { display: none; }
+        h2 { color: var(--primary-color); margin-top: 0; margin-bottom: 20px; }
+        .input-group { margin-bottom: 15px; }
+        .input-group input { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; font-family: inherit; box-sizing: border-box; }
+        .role-selection { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; background: #f9f9f9; padding: 10px; border-radius: 8px; text-align: left; }
+        button { width: 100%; padding: 12px; border: none; border-radius: 8px; font-family: inherit; font-weight: 600; font-size: 16px; cursor: pointer; transition: 0.3s; margin-bottom: 10px; }
+        .btn-register { background-color: var(--primary-color); color: white; }
+        .btn-register:hover { background-color: #0056b3; }
+        .btn-google { background-color: white; color: #333; border: 1px solid #ddd; display: flex; align-items: center; justify-content: center; gap: 10px; }
+        .btn-google:hover { background-color: #f1f1f1; }
+        .divider { margin: 15px 0; color: #888; font-size: 14px; }
+    </style>
+</head>
+<body>
+
+    <div id="location-status-card">
+        <h2>ตรวจสอบพื้นที่</h2>
+        <p id="status-text">กำลังตรวจสอบตำแหน่งของคุณ...</p>
+        <button id="btn-retry-location" style="display: none; background: var(--secondary-color); color: white;">ลองอีกครั้ง</button>
+    </div>
+
+    <div id="login-section">
+        <h2>ขอนแก่น มาร์เก็ตเพลส</h2>
+        <div class="input-group"><input type="email" id="email" placeholder="อีเมล" required></div>
+        <div class="input-group"><input type="password" id="password" placeholder="รหัสผ่าน" required></div>
+        <div class="role-selection">
+            <label><b>สมัครสมาชิกในฐานะ:</b></label>
+            <label><input type="radio" name="role" value="customer" checked> ผู้ใช้งานทั่วไป (ลูกค้า)</label>
+            <label><input type="radio" name="role" value="business"> เจ้าของกิจการ (ร้านค้า)</label>
+            <label><input type="radio" name="role" value="freelancer"> ผู้รับจ้าง (คนส่งของ)</label>
+        </div>
+        <button class="btn-register" id="btn-email-signup">เข้าสู่ระบบ / สมัครสมาชิก</button>
+        <div class="divider">หรือ</div>
+        <button class="btn-google" id="btn-google-signin">
+            <svg width="18" height="18" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+            เข้าสู่ระบบด้วย Google
+        </button>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-app.js";
+        import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-auth.js";
+        import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyBCtuNjcjOmDS1Luwg4-B5VoMrnFvlAUFI",
+            authDomain: "marketplace-3c894.firebaseapp.com",
+            projectId: "marketplace-3c894",
+            storageBucket: "marketplace-3c894.firebasestorage.app",
+            messagingSenderId: "139767124611",
+            appId: "1:139767124611:web:b43ad733ceef4c2113c1b6"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const provider = new GoogleAuthProvider();
+
+        // เช็คว่าถ้าล็อกอินอยู่แล้ว ให้ข้ามไปหน้า Dashboard เลย
+        onAuthStateChanged(auth, (user) => {
+            if (user) window.location.href = "dashboard.html";
+        });
+
+        const khonKaenPolygon = [[101.748, 16.862], [102.835, 16.850], [103.180, 16.300], [102.650, 15.630], [101.850, 15.700], [101.748, 16.862]];
+        function isPointInPolygon(point, polygon) {
+            let isInside = false;
+            for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+                if (((polygon[i][1] > point[1]) !== (polygon[j][1] > point[1])) && (point[0] < (polygon[j][0] - polygon[i][0]) * (point[1] - polygon[i][1]) / (polygon[j][1] - polygon[i][1]) + polygon[i][0])) isInside = !isInside;
+            }
+            return isInside;
+        }
+
+        function checkLocation() {
+            const statusText = document.getElementById('status-text');
+            const btnRetry = document.getElementById('btn-retry-location');
+            btnRetry.style.display = 'none';
+            statusText.innerText = "กำลังตรวจสอบตำแหน่งของคุณ...";
+
+            if (!navigator.geolocation) return statusText.innerText = "เบราว์เซอร์ไม่รองรับ";
+            
+            navigator.geolocation.getCurrentPosition(
+                (pos) => {
+                    if (isPointInPolygon([pos.coords.longitude, pos.coords.latitude], khonKaenPolygon)) {
+                        document.getElementById('location-status-card').style.display = 'none';
+                        document.getElementById('login-section').style.display = 'block';
+                    } else {
+                        statusText.innerText = "บริการเฉพาะพื้นที่จังหวัดขอนแก่นเท่านั้น";
+                        btnRetry.style.display = 'block';
+                    }
+                },
+                (err) => { statusText.innerText = "กรุณาเปิด GPS"; btnRetry.style.display = 'block'; },
+                { enableHighAccuracy: true }
+            );
+        }
+        checkLocation();
+        document.getElementById('btn-retry-location').onclick = checkLocation;
+
+        const getRole = () => document.querySelector('input[name="role"]:checked').value;
+        async function saveUser(user, role) {
+            const userRef = doc(db, "users", user.uid);
+            if (!(await getDoc(userRef)).exists()) await setDoc(userRef, { uid: user.uid, email: user.email, role: role, name: user.displayName || "ผู้ใช้ใหม่" });
+        }
+
+        document.getElementById('btn-email-signup').onclick = async () => {
+            const email = document.getElementById('email').value, password = document.getElementById('password').value;
+            if(!email || !password) return alert("กรอกข้อมูลให้ครบ");
+            try {
+                const cred = await createUserWithEmailAndPassword(auth, email, password);
+                await saveUser(cred.user, getRole());
+                window.location.href = "dashboard.html";
+            } catch (err) {
+                if(err.code === 'auth/email-already-in-use') {
+                    try { await signInWithEmailAndPassword(auth, email, password); window.location.href = "dashboard.html"; } 
+                    catch (e) { alert("รหัสผ่านไม่ถูกต้อง"); }
+                } else alert(err.message);
+            }
+        };
+
+        document.getElementById('btn-google-signin').onclick = async () => {
+            try {
+                const result = await signInWithPopup(auth, provider);
+                await saveUser(result.user, getRole());
+                window.location.href = "dashboard.html";
+            } catch (err) { alert("ยกเลิกการเข้าสู่ระบบ"); }
+        };
+    </script>
+</body>
+</html>
