@@ -24,7 +24,7 @@
         .container { max-width: 1000px; margin: auto; }
         h2 { color: var(--primary); margin-top: 0; text-align: center; font-size: 32px; }
         
-        /* สไตล์กล่องฟอร์มเพิ่มบริการ */
+        /* สไตล์กล่องฟอร์มเพิ่ม/แก้ไขบริการ */
         .add-card { background: var(--card-bg); padding: 30px; border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); margin-bottom: 40px; border: 1px solid var(--border-color); }
         label { font-weight: 600; margin-top: 15px; display: block; color: var(--text-main); font-size: 18px; }
         input[type="text"], input[type="number"], textarea, input[type="file"], select { width: 100%; padding: 12px; margin: 8px 0 15px 0; border: 1px solid var(--border-color); border-radius: 8px; box-sizing: border-box; font-family: inherit; font-size: 18px; background: var(--input-bg); color: var(--text-main); }
@@ -32,6 +32,8 @@
         .btn-add { background: var(--primary); color: white; padding: 15px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 20px; width: 100%; font-family: inherit; transition: 0.2s; }
         .btn-add:hover { opacity: 0.9; }
         .btn-add:disabled { background: #ccc; cursor: not-allowed; }
+        
+        .btn-cancel-edit { background: #dc3545; color: white; padding: 10px; border: none; border-radius: 8px; cursor: pointer; font-family: inherit; font-size: 16px; width: 100%; margin-top: 5px; display: none; font-weight: bold;}
 
         /* สไตล์รายการบริการที่ลงไว้ */
         .service-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; }
@@ -44,23 +46,30 @@
         .price-tag { color: #28a745; font-weight: bold; font-size: 22px; margin: 15px 0; }
         
         .action-btns { display: flex; gap: 10px; margin-top: auto; padding-top: 15px; border-top: 1px solid var(--border-color); }
-        .btn-delete { background: #dc3545; color: white; border: none; padding: 12px; border-radius: 8px; cursor: pointer; width: 100%; font-family: inherit; font-weight: bold; font-size: 18px; }
+        .btn-action { border: none; padding: 10px; border-radius: 8px; cursor: pointer; font-family: inherit; font-weight: bold; font-size: 16px; flex: 1; text-align: center;}
+        .btn-edit-srv { background: #007BFF; color: white; }
+        .btn-edit-srv:hover { background: #0069d9; }
+        .btn-delete { background: #dc3545; color: white; }
         .btn-delete:hover { background: #c82333; }
         
         .back-link { display: block; text-align: center; margin-top: 40px; color: var(--text-sub); text-decoration: none; font-size: 20px; font-weight: bold; padding-bottom: 30px; }
+        .no-data { color: var(--text-sub); grid-column: 1 / -1; text-align: center; font-size: 20px; padding: 40px; }
     </style>
 </head>
 <body>
     <div class="container">
         
         <div class="add-card">
-            <h2>➕ เพิ่มบริการและตั้งราคา</h2>
-            <div id="upload-status" style="color: var(--primary); display: none; font-size: 16px; margin-bottom: 15px; font-weight: bold; text-align: center;">กำลังอัปโหลดและบันทึกข้อมูล...</div>
+            <h2 id="formTitle">➕ เพิ่มบริการและตั้งราคา</h2>
+            <div id="upload-status" style="color: var(--primary); display: none; font-size: 16px; margin-bottom: 15px; font-weight: bold; text-align: center;">กำลังบันทึกข้อมูล...</div>
             
+            <input type="hidden" id="editServiceId">
+            <input type="hidden" id="oldImageUrl">
+
             <label>ชื่อบริการ</label>
             <input type="text" id="srvName" placeholder="เช่น บริการล้างแอร์ติดผนัง, รับตัดหญ้า">
             
-            <label>หมวดหมู่งานบริการ (เพื่อให้ลูกค้าค้นหาง่ายขึ้น)</label>
+            <label>หมวดหมู่งานบริการ</label>
             <select id="srvCategory">
                 <option value="cleaning">🧹 ทำความสะอาด / แม่บ้าน</option>
                 <option value="aircon">❄️ ล้างแอร์ / ซ่อมแอร์</option>
@@ -72,15 +81,16 @@
             </select>
             
             <label>รายละเอียดและเงื่อนไขการรับงาน</label>
-            <textarea id="srvDesc" rows="3" placeholder="อธิบายขอบเขตงาน เช่น รับล้างแอร์ไม่เกิน 24,000 BTU หรือพื้นที่ไม่เกิน 50 ตร.ม."></textarea>
+            <textarea id="srvDesc" rows="3" placeholder="อธิบายขอบเขตงาน..."></textarea>
             
             <label>ราคาค่าบริการ (บาท / ครั้ง)</label>
             <input type="number" id="srvPrice" placeholder="กำหนดราคาที่ตายตัว">
             
-            <label>อัปโหลดรูปภาพผลงาน (1 รูปภาพ)</label>
+            <label id="imgLabel">อัปโหลดรูปภาพผลงาน (1 รูปภาพ)</label>
             <input type="file" id="srvImage" accept="image/*">
             
             <button id="btn-add-service" class="btn-add">บันทึกบริการลงระบบ</button>
+            <button id="btnCancelEdit" class="btn-cancel-edit" onclick="cancelEditMode()">❌ ยกเลิกการแก้ไข</button>
         </div>
 
         <h2>📋 บริการที่ฉันเปิดรับงานไว้</h2>
@@ -93,10 +103,10 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-app.js";
         import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-auth.js";
-        import { getFirestore, collection, addDoc, query, where, getDocs, doc, deleteDoc } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-firestore.js";
+        import { getFirestore, collection, addDoc, query, where, getDocs, doc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-firestore.js";
         import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-storage.js";
 
-        // *** ใส่ Config ของคุณ ***
+        // *** ใส่ Config ของคุณให้เรียบร้อย ***
         const firebaseConfig = {
             apiKey: "AIzaSyBCtuNjcjOmDS1Luwg4-B5VoMrnFvlAUFI",
             authDomain: "marketplace-3c894.firebaseapp.com",
@@ -109,16 +119,11 @@
         const storage = getStorage(app);
 
         let currentUserUid = null;
+        let isEditMode = false; // ตัวแปรเช็คสถานะว่ากำลังแก้ไขอยู่หรือไม่
 
-        // ตัวช่วยแปลงค่าหมวดหมู่เป็นข้อความสวยงามสำหรับแสดงผล
         const categoryLabels = {
-            'cleaning': '🧹 ทำความสะอาด',
-            'aircon': '❄️ แอร์',
-            'gardening': '🌿 ตัดหญ้า/จัดสวน',
-            'plumbing': '🚰 ประปา',
-            'electric': '⚡ ไฟฟ้า',
-            'repair': '🛠️ ซ่อมแซม',
-            'other': '✨ อื่นๆ'
+            'cleaning': '🧹 ทำความสะอาด', 'aircon': '❄️ แอร์', 'gardening': '🌿 ตัดหญ้า/จัดสวน',
+            'plumbing': '🚰 ประปา', 'electric': '⚡ ไฟฟ้า', 'repair': '🛠️ ซ่อมแซม', 'other': '✨ อื่นๆ'
         };
 
         onAuthStateChanged(auth, (user) => {
@@ -130,7 +135,47 @@
             }
         });
 
-        // 1. ฟังก์ชันเพิ่มบริการใหม่
+        // 💡 ฟังก์ชันเปิดโหมดแก้ไข (ดึงข้อมูลเก่าขึ้นฟอร์มด้านบน)
+        window.startEditService = function(srvStr) {
+            isEditMode = true;
+            const srv = JSON.parse(decodeURIComponent(srvStr));
+            
+            // เปลี่ยนข้อความ UI
+            document.getElementById('formTitle').innerText = "✏️ แก้ไขข้อมูลบริการ";
+            document.getElementById('btn-add-service').innerText = "💾 บันทึกการแก้ไขข้อมูล";
+            document.getElementById('btnCancelEdit').style.display = "block";
+            document.getElementById('imgLabel').innerText = "เปลี่ยนรูปภาพผลงานใหม่ (ปล่อยว่างไว้หากต้องการใช้รูปเดิม)";
+
+            // บรรจุข้อมูลเก่าเข้าฟอร์ม
+            document.getElementById('editServiceId').value = srv.id;
+            document.getElementById('oldImageUrl').value = srv.image_url || "";
+            document.getElementById('srvName').value = srv.name || "";
+            document.getElementById('srvCategory').value = srv.category || "cleaning";
+            document.getElementById('srvDesc').value = srv.description || "";
+            document.getElementById('srvPrice').value = srv.price || "";
+            
+            // เลื่อนหน้าจอขึ้นไปที่ฟอร์มด้านบนสุดเพื่อความสะดวก
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        };
+
+        // 💡 ฟังก์ชันยกเลิกโหมดแก้ไข ล้างค่าฟอร์มกลับเป็นโหมดเพิ่มข้อมูลปกติ
+        window.cancelEditMode = function() {
+            isEditMode = false;
+            document.getElementById('formTitle').innerText = "➕ เพิ่มบริการและตั้งราคา";
+            document.getElementById('btn-add-service').innerText = "บันทึกบริการลงระบบ";
+            document.getElementById('btnCancelEdit').style.display = "none";
+            document.getElementById('imgLabel').innerText = "อัปโหลดรูปภาพผลงาน (1 รูปภาพ)";
+
+            document.getElementById('editServiceId').value = '';
+            document.getElementById('oldImageUrl').value = '';
+            document.getElementById('srvName').value = '';
+            document.getElementById('srvCategory').value = 'cleaning';
+            document.getElementById('srvDesc').value = '';
+            document.getElementById('srvPrice').value = '';
+            document.getElementById('srvImage').value = '';
+        };
+
+        // 🛠️ ปุ่มบันทึกข้อมูล (รองรับทั้งการ Add ชิ้นใหม่ และ Update ของเก่า)
         document.getElementById('btn-add-service').onclick = async () => {
             const name = document.getElementById('srvName').value;
             const category = document.getElementById('srvCategory').value;
@@ -146,7 +191,9 @@
             statusMsg.style.display = "block";
 
             try {
-                let imageUrl = "";
+                let imageUrl = isEditMode ? document.getElementById('oldImageUrl').value : "";
+                
+                // ถ้ามีการเลือกอัปโหลดรูปภาพใหม่เข้ามา ให้ทำการอัปโหลดเข้า Storage
                 if (fileInput.files.length > 0) {
                     const file = fileInput.files[0];
                     const storageRef = ref(storage, `services/${currentUserUid}/${Date.now()}_${file.name}`);
@@ -154,27 +201,35 @@
                     imageUrl = await getDownloadURL(storageRef);
                 }
 
-                // บันทึกข้อมูลพร้อมหมวดหมู่ (category)
-                await addDoc(collection(db, "services"), {
-                    name: name,
-                    category: category,
-                    description: desc,
-                    price: price,
-                    image_url: imageUrl,
-                    provider_uid: currentUserUid,
-                    created_at: new Date()
-                });
-
-                alert("เพิ่มบริการสำเร็จ!");
+                if (isEditMode) {
+                    // 🔄 ทำการ อัปเดต ข้อมูลเดิม (UpdateDoc)
+                    const srvId = document.getElementById('editServiceId').value;
+                    await updateDoc(doc(db, "services", srvId), {
+                        name: name,
+                        category: category,
+                        description: desc,
+                        price: price,
+                        image_url: imageUrl,
+                        updated_at: new Date()
+                    });
+                    alert("🎉 อัปเดตข้อมูลบริการสำเร็จเรียบร้อย!");
+                    cancelEditMode(); // ปิดโหมดแก้ไขและเคลียร์ฟอร์ม
+                } else {
+                    // ➕ ทำการ เพิ่ม ข้อมูลใหม่ (AddDoc)
+                    await addDoc(collection(db, "services"), {
+                        name: name,
+                        category: category,
+                        description: desc,
+                        price: price,
+                        image_url: imageUrl,
+                        provider_uid: currentUserUid,
+                        created_at: new Date()
+                    });
+                    alert("🎉 เพิ่มบริการใหม่เข้าระบบสำเร็จ!");
+                    cancelEditMode();
+                }
                 
-                // ล้างฟอร์ม
-                document.getElementById('srvName').value = '';
-                document.getElementById('srvCategory').value = 'cleaning';
-                document.getElementById('srvDesc').value = '';
-                document.getElementById('srvPrice').value = '';
-                document.getElementById('srvImage').value = '';
-                
-                loadMyServices(); 
+                loadMyServices(); // โหลดรายการบริการที่วาดใหม่สดๆ
 
             } catch (e) {
                 alert("เกิดข้อผิดพลาด: " + e.message);
@@ -185,7 +240,7 @@
             }
         };
 
-        // 2. ฟังก์ชันโหลดบริการมาแสดง
+        // 🔄 ดึงรายการบริการของช่างคนนี้มาแสดงผล
         async function loadMyServices() {
             const listDiv = document.getElementById('service-list');
             const loadingMsg = document.getElementById('loading-list');
@@ -198,24 +253,25 @@
                 listDiv.innerHTML = "";
 
                 if (snapshot.empty) {
-                    listDiv.innerHTML = "<p style='color:var(--text-sub); grid-column: 1 / -1; text-align:center;'>ยังไม่มีรายการบริการ คุณสามารถเพิ่มได้จากฟอร์มด้านบน</p>";
+                    listDiv.innerHTML = "<p class='no-data'>ยังไม่มีรายการบริการ คุณสามารถเพิ่มได้จากฟอร์มด้านบน</p>";
                     return;
                 }
 
                 snapshot.forEach((docSnap) => {
-                    const srv = docSnap.data();
-                    const srvId = docSnap.id;
+                    const srv = { id: docSnap.id, ...docSnap.data() };
+                    const srvStr = encodeURIComponent(JSON.stringify(srv));
 
-                    window[`deleteSrv_${srvId}`] = async () => {
+                    window[`deleteSrv_${srv.id}`] = async () => {
                         if(confirm(`ยืนยันการลบบริการ "${srv.name}" ใช่หรือไม่?`)) {
                             try {
-                                await deleteDoc(doc(db, "services", srvId));
+                                await deleteDoc(doc(db, "services", srv.id));
+                                if(isEditMode && document.getElementById('editServiceId').value === srv.id) cancelEditMode();
                                 loadMyServices();
                             } catch (e) { alert("ลบไม่สำเร็จ: " + e.message); }
                         }
                     };
 
-                    const imgHtml = srv.image_url ? `<img src="${srv.image_url}" class="service-img">` : `<div class="service-img" style="display:flex; align-items:center; justify-content:center; color:#aaa;">ไม่มีรูปภาพ</div>`;
+                    const imgHtml = srv.image_url ? `<img src="${srv.image_url}" class="service-img">` : `<div class="service-img" style="display:flex; align-items:center; justify-content:center; color:#aaa; font-size:16px;">ไม่มีรูปภาพ</div>`;
                     const catLabel = categoryLabels[srv.category] || categoryLabels['other'];
 
                     listDiv.innerHTML += `
@@ -228,7 +284,8 @@
                                 <p class="price-tag">฿ ${srv.price}</p>
                                 
                                 <div class="action-btns">
-                                    <button class="btn-delete" onclick="window.deleteSrv_${srvId}()">🗑️ ลบบริการ</button>
+                                    <button class="btn-action btn-edit-srv" onclick="startEditService('${srvStr}')">✏️ แก้ไขข้อมูล</button>
+                                    <button class="btn-action btn-delete" onclick="window.deleteSrv_${srv.id}()">🗑️ ลบ</button>
                                 </div>
                             </div>
                         </div>
