@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ออเดอร์เข้ามาร้านค้า - ขอนแก่น มาร์เก็ตเพลส</title>
+    <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Chakra Petch', sans-serif; padding: 20px; background: #f4f7f6; }
+        .container { max-width: 900px; margin: auto; background: white; padding: 30px; border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        h2 { color: #fd7e14; margin-top: 0; text-align: center; }
+        
+        .order-card { background: #fff; border: 1px solid #e0e0e0; border-radius: 12px; padding: 20px; margin-bottom: 15px; box-shadow: 0 2px 6px rgba(0,0,0,0.05); display: flex; justify-content: space-between; align-items: center; }
+        .order-details h3 { margin: 0 0 10px 0; color: #333; }
+        .order-details p { margin: 5px 0; color: #555; font-size: 15px; }
+        
+        /* สไตล์สำหรับป้ายสถานะ (Status Badges) */
+        .badge { padding: 6px 12px; border-radius: 20px; font-weight: 600; font-size: 14px; display: inline-block; }
+        .badge-bidding { background-color: #fff3cd; color: #856404; }
+        .badge-accepted { background-color: #d1ecf1; color: #0c5460; }
+        .badge-completed { background-color: #d4edda; color: #155724; }
+        .badge-cancelled { background-color: #f8d7da; color: #721c24; }
+
+        .status-section { text-align: right; min-width: 18px; }
+        .time-highlight { color: #dc3545; font-weight: 600; }
+        
+        .back-link { display: block; text-align: center; margin-top: 25px; color: #666; text-decoration: none; font-size: 14px; }
+        .no-orders { text-align: center; color: #888; padding: 40px; font-size: 16px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>🔔 รายการออเดอร์ที่สั่งเข้ามาในร้าน</h2>
+        <div id="loading-msg" style="text-align: center; color: #666; margin: 15px 0;">กำลังเชื่อมต่อฐานข้อมูลเรียเรียลไทม์...</div>
+        
+        <div id="orders-list"></div>
+
+        <a href="dashboard.html" class="back-link">← กลับไปหน้า Dashboard</a>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-app.js";
+        import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-auth.js";
+        import { getFirestore, collection, query, where, onSnapshot, orderBy } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyBCtuNjcjOmDS1Luwg4-B5VoMrnFvlAUFI",
+            authDomain: "marketplace-3c894.firebaseapp.com",
+            projectId: "marketplace-3c894",
+            storageBucket: "marketplace-3c894.firebasestorage.app"
+        };
+        
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        onAuthStateChanged(auth, (user) => {
+            if (!user) {
+                window.location.href = "index.html";
+            } else {
+                listenToStoreOrders(user.uid);
+            }
+        });
+
+        // 💡 ฟังก์ชันดักจับข้อมูลออเดอร์แบบ Real-time
+        function listenToStoreOrders(storeOwnerUid) {
+            const ordersListDiv = document.getElementById('orders-list');
+            const loadingMsg = document.getElementById('loading-msg');
+
+            // ใช้ Query คัดกรองเอาเฉพาะออเดอร์ของร้านนี้ และเรียงจากออเดอร์ใหม่ล่าสุดขึ้นก่อน
+            const q = query(
+                collection(db, "orders"), 
+                where("store_owner_uid", "==", storeOwnerUid),
+                orderBy("created_at", "desc")
+            );
+
+            // ⚡ เปลี่ยนจาก getDocs มาเป็น onSnapshot เพื่อรองรับ Real-time อัปเดตอัตโนมัติ
+            onSnapshot(q, (snapshot) => {
+                loadingMsg.innerText = ""; // ซ่อนข้อความกำลังโหลด
+                ordersListDiv.innerHTML = ""; // ล้างหน้าจอเพื่อวาดใหม่เมื่อข้อมูลเปลี่ยน
+
+                if (snapshot.empty) {
+                    ordersListDiv.innerHTML = '<div class="no-orders">ยังไม่มีออเดอร์สั่งเข้ามาในร้านค้าของคุณในขณะนี้</div>';
+                    return;
+                }
+
+                snapshot.forEach((orderDoc) => {
+                    const order = orderDoc.data();
+                    
+                    // แปลงค่า Timestamp ของ Firebase ให้เป็นเวลาอ่านง่ายของไทย
+                    const createdAt = order.created_at ? new Date(order.created_at.seconds * 1000).toLocaleString('th-TH') : '-';
+                    const deliveryTime = order.delivery_time ? new Date(order.delivery_time.seconds * 1000).toLocaleString('th-TH') : '-';
+                    
+                    // กำหนด Badge สีตามสถานะออเดอร์
+                    let statusBadge = '';
+                    let statusText = '';
+                    if (order.status === 'bidding') {
+                        statusText = '⏳ กำลังประมูลหาคนส่ง';
+                        statusBadge = 'badge-bidding';
+                    } else if (order.status === 'accepted') {
+                        statusText = '🏍️ มีคนขับรับงานแล้ว';
+                        statusBadge = 'badge-accepted';
+                    } else if (order.status === 'completed') {
+                        statusText = '✅ ส่งสินค้าสำเร็จ';
+                        statusBadge = 'badge-completed';
+                    } else if (order.status === 'cancelled') {
+                        statusText = '❌ ยกเลิกออเดอร์';
+                        statusBadge = 'badge-cancelled';
+                    }
+
+                    // สร้างกล่อง Card แสดงผลออเดอร์
+                    const card = document.createElement('div');
+                    card.className = 'order-card';
+                    card.innerHTML = `
+                        <div class="order-details">
+                            <h3>📦 สินค้า: ${order.product_name}</h3>
+                            <p><b>💰 ราคา:</b> ${order.price} บาท</p>
+                            <p><b>⏰ เวลาที่สั่งซื้อ:</b> ${createdAt}</p>
+                            <p class="time-highlight"><b>📍 เวลาที่ลูกค้าต้องการรับของ:</b> ${deliveryTime}</p>
+                            <p style="font-size: 13px; color: #888;">Order ID: ${orderDoc.id}</p>
+                        </div>
+                        <div class="status-section">
+                            <span class="badge ${statusBadge}">${statusText}</span>
+                        </div>
+                    `;
+                    ordersListDiv.appendChild(card);
+                });
+            }, (error) => {
+                console.error("Error listening to orders: ", error);
+                loadingMsg.innerHTML = "<span style='color:red;'>⚠️ ข้อผิดพลาด: จำเป็นต้องสร้าง Index บน Firestore ก่อนใช้งาน</span>";
+            });
+        }
+    </script>
+</body>
+</html>
