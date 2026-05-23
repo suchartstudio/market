@@ -5,19 +5,27 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ค้นหาและจ้างบริการ - ขอนแก่น แพลตฟอร์ม</title>
     <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;600&display=swap" rel="stylesheet">
+    
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
     <style>
         body { font-family: 'Chakra Petch', sans-serif; padding: 20px; background: #f4f7f6; }
-        h2 { text-align: center; color: #333; margin-bottom: 30px; }
-        .service-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; max-width: 1200px; margin: auto; }
+        h2 { text-align: center; color: #333; margin-bottom: 20px; }
         
-        /* สไตล์การ์ดงานบริการชิดขอบรูปด้านบน */
+        /* กล่องข้อมูลลูกค้าส่วนกลาง */
+        .customer-info-card { background: white; border-radius: 16px; padding: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); max-width: 800px; margin: 0 auto 30px auto; border-top: 4px solid #007BFF; }
+        .customer-info-card label { font-weight: 600; color: #333; display: block; margin: 10px 0 5px 0; }
+        .customer-info-card input[type="text"] { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; font-family: inherit; box-sizing: border-box; }
+        #map { height: 250px; width: 100%; border-radius: 8px; border: 1px solid #ddd; z-index: 1; }
+        
+        .service-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; max-width: 1200px; margin: auto; }
         .card { background: white; border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); display: flex; flex-direction: column; justify-content: space-between; overflow: hidden; }
         .card-img { width: 100%; height: 200px; object-fit: cover; background: #eee; }
         .card-body { padding: 20px; display: flex; flex-direction: column; justify-content: space-between; flex-grow: 1; }
         
         .price-tag { color: #28a745; font-weight: bold; font-size: 1.2em; margin: 10px 0; }
         
-        /* กล่องเลือกเวลานัดหมาย */
         .time-box { background: #eef2f7; padding: 12px; border-radius: 8px; margin: 12px 0; text-align: left; }
         .time-box label { font-size: 14px; font-weight: 600; color: #555; display: block; margin-bottom: 5px; }
         .time-box input { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 6px; font-family: inherit; box-sizing: border-box; }
@@ -29,10 +37,24 @@
     </style>
 </head>
 <body>
-    <h2>🔍 รายการบริการที่มีในระบบ</h2>
+    <h2>🔍 ค้นหาและจ้างงานบริการ</h2>
     
+    <div class="customer-info-card">
+        <h3 style="margin-top: 0; color: #007BFF;">📍 ข้อมูลสถานที่รับบริการ (ระบุครั้งเดียว)</h3>
+        
+        <label>📞 เบอร์โทรศัพท์ติดต่อของท่าน:</label>
+        <input type="text" id="custPhone" placeholder="เช่น 081-234-5678">
+        
+        <label>📌 ปักหมุดสถานที่หน้างาน (คลิกบนแผนที่):</label>
+        <div id="map"></div>
+        <p style="font-size: 13px; color: #dc3545; margin-top: 5px;">* กรุณาคลิกเลือกตำแหน่งบนแผนที่ เพื่อให้ช่างนำทางไปได้ถูกต้อง</p>
+        
+        <input type="hidden" id="custLat">
+        <input type="hidden" id="custLng">
+    </div>
+
     <div class="service-grid" id="service-list">
-        <p style="text-align: center; width: 100%; color: #666;">กำลังค้นหางานบริการในระบบ...</p>
+        <p style="text-align: center; width: 100%; color: #666;">กำลังโหลดรายการบริการ...</p>
     </div>
     
     <a href="dashboard.html" class="back-link">← กลับไปหน้า Dashboard</a>
@@ -42,22 +64,41 @@
         import { getAuth } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-auth.js";
         import { getFirestore, collection, getDocs, addDoc } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-firestore.js";
 
-        // *** ใช้ Config ตัวเดิมของคุณ ***
+        // *** ใส่ Config ของคุณ ***
         const firebaseConfig = {
             apiKey: "AIzaSyBCtuNjcjOmDS1Luwg4-B5VoMrnFvlAUFI",
             authDomain: "marketplace-3c894.firebaseapp.com",
             projectId: "marketplace-3c894",
             storageBucket: "marketplace-3c894.firebasestorage.app"
         };
-        
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
 
-        // 💡 ฟังก์ชันส่งใบจ้างงานนัดหมายเวลา (Direct Booking - ไม่ประมูล)
+        // --- ตั้งค่าระบบแผนที่ ---
+        let map = L.map('map').setView([16.4322, 102.8236], 13);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
+        let marker;
+
+        map.on('click', function(e) {
+            document.getElementById('custLat').value = e.latlng.lat.toFixed(6);
+            document.getElementById('custLng').value = e.latlng.lng.toFixed(6);
+            if (marker) marker.setLatLng(e.latlng);
+            else marker = L.marker(e.latlng).addTo(map);
+        });
+
+        // --- ฟังก์ชันกดจ้างงาน ---
         async function hireService(service, inputId) {
             const user = auth.currentUser;
             if (!user) return alert("กรุณาล็อกอินเข้าสู่ระบบก่อนทำการจ้างงาน");
+
+            // ดึงข้อมูลส่วนตัวจากกล่องด้านบน
+            const phone = document.getElementById('custPhone').value;
+            const lat = parseFloat(document.getElementById('custLat').value);
+            const lng = parseFloat(document.getElementById('custLng').value);
+
+            if (!phone) return alert("กรุณาระบุเบอร์โทรศัพท์ติดต่อในกล่องด้านบน");
+            if (isNaN(lat) || isNaN(lng)) return alert("กรุณาคลิกปักหมุดสถานที่รับบริการบนแผนที่");
 
             const appointmentTimeValue = document.getElementById(inputId).value;
             if (!appointmentTimeValue) return alert("กรุณาระบุ วัน-เวลา ที่ท่านต้องการรับบริการ");
@@ -65,45 +106,44 @@
             const appointmentTime = new Date(appointmentTimeValue);
             const now = new Date();
 
+            // เช็คแค่ว่าห้ามเลือกเวลาในอดีต (ยกเลิกกฎ 3 ชม. แล้ว)
             if (appointmentTime <= now) {
-                return alert("❌ ไม่สามารถเลือกเวลาในอดีตได้ กรุณาเลือกวันและเวลาที่ต้องการล่วงหน้า");
+                return alert("❌ ไม่สามารถเลือกเวลาในอดีตได้ กรุณาเลือกวันและเวลาที่ถูกต้อง");
             }
 
             const btn = document.querySelector(`button[onclick*="${service.id}"]`);
             if(btn) { btn.disabled = true; btn.innerText = "กำลังส่งใบจ้างงาน..."; }
 
-            // เตรียมโครงสร้างข้อมูลส่งลงคอลเลกชัน orders ใหม่ (ตัดระบบสต็อกและ bidding ทิ้ง)
             const orderData = {
-                customer_uid: user.uid,              // ID ลูกค้าคนจ้าง
-                provider_uid: service.provider_uid,  // ID ช่างผู้ให้บริการ (ส่งตรงถึงช่างรายนี้)
+                customer_uid: user.uid,
+                provider_uid: service.provider_uid,
                 service_id: service.id,
-                product_name: service.name,          // ใช้ชื่อฟิลด์เดิมในระบบเพื่อให้สอดคล้องกับโครงสร้างเก่า
-                price: service.price,                // ราคาตายตัวที่ช่างกำหนด
-                status: "pending",                   // สถานะเริ่มต้น: รอยืนยันรับงานจากช่าง
-                appointment_time: appointmentTime,   // วันเวลานัดหมายทำบริการ
+                product_name: service.name,
+                price: service.price,
+                customer_phone: phone, // เพิ่มเบอร์โทร
+                location: { lat: lat, lng: lng }, // เพิ่มพิกัดแผนที่
+                status: "pending",
+                appointment_time: appointmentTime,
                 created_at: now
             };
 
             try {
                 await addDoc(collection(db, "orders"), orderData);
-                alert(`🎉 ส่งใบจ้างงาน "${service.name}" สำเร็จ! กรุณารอช่างตรวจสอบและกดยืนยันรับงาน`);
-                document.getElementById(inputId).value = '';
+                alert(`🎉 ส่งใบจ้างงาน "${service.name}" สำเร็จ! กรุณารอช่างติดต่อกลับหรือยืนยันรับงาน`);
+                document.getElementById(inputId).value = ''; // เคลียร์ช่องเวลา
             } catch (e) {
                 alert("เกิดข้อผิดพลาดในการจ้างงาน: " + e.message);
-                console.error(e);
             } finally {
-                if(btn) { btn.disabled = false; btn.innerText = "🤝 กดจ้างงานบริการ"; }
+                if(btn) { btn.disabled = false; btn.innerText = "🤝 กดจ้างงานบริการ (ช่างพร้อมลุย)"; }
             }
         }
 
-        // 💡 ฟังก์ชันดึงรายการงานบริการทั้งหมดขึ้นมาแสดง (เปลี่ยนมาดึงคอลเลกชัน services)
         async function loadAllServices() {
             const listDiv = document.getElementById('service-list');
             try {
                 const querySnapshot = await getDocs(collection(db, "services"));
-                
                 if (querySnapshot.empty) {
-                    listDiv.innerHTML = "<div class='no-data'>😔 ขณะนี้ยังไม่มีผู้ให้บริการรายใดลงทะเบียนงานบริการไว้ในระบบ</div>";
+                    listDiv.innerHTML = "<div class='no-data'>😔 ขณะนี้ยังไม่มีผู้ให้บริการลงทะเบียนงานบริการไว้</div>";
                     return;
                 }
 
@@ -112,14 +152,9 @@
                     const data = serviceDoc.data();
                     const service = { id: serviceDoc.id, ...data };
                     const inputId = `time-${service.id}`;
-
-                    // ผูกฟังก์ชันเข้ากับหน้าต่าง window object
                     window[`hire_${service.id}`] = () => hireService(service, inputId);
                     
-                    // แสดงผลรูปภาพเดี่ยวของบริการ
-                    const imgHtml = data.image_url 
-                        ? `<img src="${data.image_url}" class="card-img" alt="${data.name}">`
-                        : `<div class="card-img" style="display:flex; align-items:center; justify-content:center; color:#aaa; font-size:14px;">ไม่มีรูปภาพตัวอย่าง</div>`;
+                    const imgHtml = data.image_url ? `<img src="${data.image_url}" class="card-img">` : `<div class="card-img" style="display:flex; align-items:center; justify-content:center; color:#aaa;">ไม่มีรูปภาพตัวอย่าง</div>`;
                     
                     html += `
                         <div class="card">
@@ -132,10 +167,10 @@
                                 </div>
                                 <div>
                                     <div class="time-box">
-                                        <label>📅 เลือกวัน-เวลาที่ต้องการนัดคิวช่าง:</label>
+                                        <label>📅 เลือกวัน-เวลาที่ต้องการให้ช่างเข้าทำงาน:</label>
                                         <input type="datetime-local" id="${inputId}">
                                     </div>
-                                    <button class="btn-hire" onclick="window.hire_${service.id}()">🤝 กดจ้างงานบริการ</button>
+                                    <button class="btn-hire" onclick="window.hire_${service.id}()">🤝 กดจ้างงานบริการ (ช่างพร้อมลุย)</button>
                                 </div>
                             </div>
                         </div>
@@ -143,12 +178,9 @@
                 });
                 listDiv.innerHTML = html;
             } catch (e) {
-                console.error("Error loading services:", e);
-                listDiv.innerHTML = "<div class='no-data' style='color:red;'>⚠️ เกิดข้อผิดพลาดในการเชื่อมต่อข้อมูลบริการจากฐานข้อมูล</div>";
+                listDiv.innerHTML = "<div class='no-data' style='color:red;'>⚠️ เกิดข้อผิดพลาดในการโหลดข้อมูล</div>";
             }
         }
-
-        // เรียกทำงานทันทีที่เข้าหน้าเว็บ
         loadAllServices();
     </script>
 </body>
