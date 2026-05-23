@@ -3,64 +3,143 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>จัดการร้านค้า - ขอนแก่น มาร์เก็ตเพลส</title>
+    <title>ตั้งค่าร้านค้า - ขอนแก่น มาร์เก็ตเพลส</title>
     <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;600&display=swap" rel="stylesheet">
+    
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
     <style>
         body { font-family: 'Chakra Petch', sans-serif; padding: 20px; background: #f4f7f6; display: flex; justify-content: center; }
-        .card { background: white; padding: 30px; border-radius: 16px; width: 100%; max-width: 500px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
-        h2 { color: #fd7e14; margin-top: 0; }
-        input, textarea { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-family: inherit;}
-        button { width: 100%; padding: 12px; margin-top: 10px; background: #fd7e14; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 16px;}
+        .card { background: white; padding: 30px; border-radius: 16px; width: 100%; max-width: 600px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        h2 { color: #fd7e14; margin-top: 0; text-align: center; }
+        label { font-weight: 600; margin-top: 10px; display: block; color: #333; }
+        input[type="text"], textarea { width: 100%; padding: 12px; margin: 5px 0 15px 0; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-family: inherit;}
+        
+        /* สไตล์สำหรับกล่องแผนที่ */
+        #map { height: 300px; width: 100%; border-radius: 8px; margin-bottom: 10px; border: 1px solid #ddd; z-index: 1; }
+        .map-instruction { font-size: 14px; color: #dc3545; margin-bottom: 15px; text-align: center; }
+        
+        .coord-box { display: flex; gap: 10px; margin-bottom: 20px; }
+        .coord-box input { background: #e9ecef; color: #555; cursor: not-allowed; margin-bottom: 0; }
+
+        button { width: 100%; padding: 12px; background: #fd7e14; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 16px; transition: 0.3s; }
+        button:hover { background: #e06c00; }
         button:disabled { background: #ccc; cursor: not-allowed; }
         .back-link { display: block; text-align: center; margin-top: 15px; color: #666; text-decoration: none; font-size: 14px; }
     </style>
 </head>
 <body>
     <div class="card">
-        <h2>ร้านค้าของฉัน</h2>
-        <p id="status-msg">กำลังโหลดข้อมูล...</p>
-        <input type="text" id="storeName" placeholder="ชื่อร้านค้า">
-        <textarea id="storeDesc" rows="4" placeholder="รายละเอียดร้านค้า"></textarea>
+        <h2>🏪 ตั้งค่าและเปิดร้านค้า</h2>
+        <p id="status-msg" style="text-align: center; color: #666;">กำลังโหลดข้อมูล...</p>
+        
+        <label>ชื่อร้านค้า</label>
+        <input type="text" id="storeName" placeholder="เช่น ร้านส้มตำเจ๊นก">
+        
+        <label>รายละเอียดร้านค้า</label>
+        <textarea id="storeDesc" rows="3" placeholder="อธิบายจุดเด่นของร้าน หรือเวลาเปิด-ปิด"></textarea>
+        
+        <label>พิกัดร้านค้า (แผนที่)</label>
+        <p class="map-instruction">📍 กรุณาคลิกหรือแตะบนแผนที่เพื่อปักหมุดตำแหน่งร้านของคุณ</p>
+        <div id="map"></div>
+        
+        <div class="coord-box">
+            <input type="text" id="lat" placeholder="ละติจูด (Latitude)" readonly>
+            <input type="text" id="lng" placeholder="ลองจิจูด (Longitude)" readonly>
+        </div>
+
         <button id="btn-save-store">บันทึกข้อมูลร้านค้า</button>
         <a href="dashboard.html" class="back-link">← กลับไปหน้า Dashboard</a>
     </div>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-app.js";
-        import { getAuth } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-auth.js";
+        import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-auth.js";
         import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-firestore.js";
 
-        const firebaseConfig = { /* ใส่ Config ของคุณ */ };
+        // *** ใส่ Config ของคุณที่นี่ ***
+        const firebaseConfig = {
+            apiKey: "AIzaSyBCtuNjcjOmDS1Luwg4-B5VoMrnFvlAUFI",
+            authDomain: "marketplace-3c894.firebaseapp.com",
+            projectId: "marketplace-3c894",
+            storageBucket: "marketplace-3c894.firebasestorage.app"
+        };
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
 
+        // 1. ตั้งค่าแผนที่เริ่มต้น (โฟกัสที่จังหวัดขอนแก่น)
+        let map = L.map('map').setView([16.4322, 102.8236], 13);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '© OpenStreetMap'
+        }).addTo(map);
+
+        let marker; // ตัวแปรสำหรับเก็บหมุด
+
+        // 2. ฟังก์ชันเมื่อผู้ใช้คลิกบนแผนที่
+        map.on('click', function(e) {
+            const lat = e.latlng.lat;
+            const lng = e.latlng.lng;
+            
+            // นำค่าไปแสดงในช่อง Input
+            document.getElementById('lat').value = lat.toFixed(6);
+            document.getElementById('lng').value = lng.toFixed(6);
+
+            // วางหรือย้ายหมุด
+            if (marker) {
+                marker.setLatLng(e.latlng);
+            } else {
+                marker = L.marker(e.latlng).addTo(map);
+            }
+        });
+
         const statusMsg = document.getElementById('status-msg');
 
-        auth.onAuthStateChanged(async (user) => {
+        // 3. ตรวจสอบการล็อกอินและโหลดข้อมูลเดิม
+        onAuthStateChanged(auth, async (user) => {
             if (!user) return window.location.href = "index.html";
             
             try {
                 const storeRef = doc(db, "stores", user.uid);
                 const docSnap = await getDoc(storeRef);
+                
                 if (docSnap.exists()) {
-                    document.getElementById('storeName').value = docSnap.data().name;
-                    document.getElementById('storeDesc').value = docSnap.data().description;
+                    const data = docSnap.data();
+                    document.getElementById('storeName').value = data.name || "";
+                    document.getElementById('storeDesc').value = data.description || "";
+                    
+                    // ถ้าเคยปักหมุดไว้แล้ว ให้แสดงหมุดและเลื่อนแผนที่ไปจุดนั้น
+                    if(data.location && data.location.lat && data.location.lng) {
+                        document.getElementById('lat').value = data.location.lat;
+                        document.getElementById('lng').value = data.location.lng;
+                        
+                        const savedLatLng = [data.location.lat, data.location.lng];
+                        map.setView(savedLatLng, 15);
+                        marker = L.marker(savedLatLng).addTo(map);
+                    }
+                    
                     statusMsg.innerText = "แก้ไขข้อมูลร้านค้าของคุณ";
                 } else {
-                    statusMsg.innerText = "ยังไม่มีร้านค้า กรุณากรอกข้อมูลเพื่อเปิดร้าน";
+                    statusMsg.innerText = "กรอกข้อมูลและปักหมุดเพื่อเปิดร้านใหม่";
                 }
             } catch (e) {
+                console.error("Error loading store:", e);
                 statusMsg.innerText = "เกิดข้อผิดพลาดในการโหลดข้อมูล";
             }
         });
 
+        // 4. บันทึกข้อมูลลง Firestore
         document.getElementById('btn-save-store').onclick = async () => {
             const user = auth.currentUser;
             const name = document.getElementById('storeName').value;
             const desc = document.getElementById('storeDesc').value;
+            const lat = parseFloat(document.getElementById('lat').value);
+            const lng = parseFloat(document.getElementById('lng').value);
 
             if(!name) return alert("กรุณาระบุชื่อร้านค้า");
+            if(!lat || !lng || isNaN(lat)) return alert("กรุณาคลิกปักหมุดบนแผนที่");
 
             const btn = document.getElementById('btn-save-store');
             btn.innerText = "กำลังบันทึก...";
@@ -70,10 +149,15 @@
                 await setDoc(doc(db, "stores", user.uid), {
                     name: name,
                     description: desc,
+                    location: {
+                        lat: lat,
+                        lng: lng
+                    },
                     owner_uid: user.uid,
                     updated_at: new Date()
                 });
-                alert("บันทึกข้อมูลร้านค้าสำเร็จ!");
+                alert("บันทึกข้อมูลและพิกัดร้านค้าสำเร็จ!");
+                window.location.href = "dashboard.html";
             } catch (e) {
                 alert("เกิดข้อผิดพลาด: " + e.message);
             } finally {
