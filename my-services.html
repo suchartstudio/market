@@ -71,13 +71,19 @@
             
             <label>หมวดหมู่งานบริการ</label>
             <select id="srvCategory">
-                <option value="cleaning">🧹 ทำความสะอาด / แม่บ้าน</option>
-                <option value="aircon">❄️ ล้างแอร์ / ซ่อมแอร์</option>
-                <option value="gardening">🌿 ตัดหญ้า / จัดสวน</option>
-                <option value="plumbing">🚰 ช่างประปา / ท่อตัน</option>
-                <option value="electric">⚡ ช่างไฟฟ้า</option>
-                <option value="repair">🛠️ ซ่อมแซมทั่วไป</option>
-                <option value="other">✨ อื่นๆ</option>
+              <option value="cleaning">🧹 ทำความสะอาด / แม่บ้าน</option>
+    <option value="aircon">❄️ ล้างแอร์ / ซ่อมแอร์</option>
+    <option value="gardening">🌿 ตัดหญ้า / จัดสวน</option>
+    <option value="plumbing">🚰 ช่างประปา / ท่อตัน</option>
+    <option value="electric">⚡ ช่างไฟฟ้า</option>
+    <option value="repair">🛠️ ซ่อมแซมทั่วไป</option>
+    <option value="cooking">🍳 รับทำอาหาร / จัดเลี้ยง</option>
+    <option value="computer">💻 ซ่อมคอมพิวเตอร์ / ไอที</option>
+    <option value="mobile">📱 ซ่อมมือถือ / แท็บเล็ต</option>
+    <option value="automotive">🚗 ซ่อมรถยนต์ / มอเตอร์ไซค์</option>
+    <option value="event">🎉 งานอีเวนท์ / ออแกไนซ์</option>
+    <option value="general">💼 รับจ้างทั่วไป / จิปาถะ</option>
+    <option value="other">✨ อื่นๆ</option>
             </select>
             
             <label>รายละเอียดและเงื่อนไขการรับงาน</label>
@@ -122,8 +128,20 @@
         let isEditMode = false; // ตัวแปรเช็คสถานะว่ากำลังแก้ไขอยู่หรือไม่
 
         const categoryLabels = {
-            'cleaning': '🧹 ทำความสะอาด', 'aircon': '❄️ แอร์', 'gardening': '🌿 ตัดหญ้า/จัดสวน',
-            'plumbing': '🚰 ประปา', 'electric': '⚡ ไฟฟ้า', 'repair': '🛠️ ซ่อมแซม', 'other': '✨ อื่นๆ'
+            'cleaning': '🧹 ทำความสะอาด', 
+    'aircon': '❄️ แอร์', 
+    'gardening': '🌿 ตัดหญ้า/จัดสวน',
+    'plumbing': '🚰 ประปา', 
+    'electric': '⚡ ไฟฟ้า', 
+    'repair': '🛠️ ซ่อมแซม',
+    // 🌟 เพิ่มการแปลงชื่อหมวดหมู่ใหม่ตรงนี้
+    'cooking': '🍳 รับทำอาหาร',
+    'computer': '💻 ซ่อมคอมฯ',
+    'mobile': '📱 ซ่อมมือถือ',
+    'automotive': '🚗 ซ่อมรถยนต์',
+    'event': '🎉 งานอีเวนท์',
+    'general': '💼 รับจ้างทั่วไป',
+    'other': '✨ อื่นๆ'
         };
 
         onAuthStateChanged(auth, (user) => {
