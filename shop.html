@@ -9,12 +9,26 @@
         body { font-family: 'Chakra Petch', sans-serif; padding: 20px; background: #f4f7f6; }
         h2 { text-align: center; color: #333; margin-bottom: 30px; }
         .product-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; max-width: 1200px; margin: auto; }
-        .card { background: white; padding: 20px; border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); display: flex; flex-direction: column; justify-content: space-between; }
         
-        /* สไตล์สำหรับรูปภาพ */
-        .image-gallery { display: flex; gap: 8px; margin-bottom: 15px; overflow-x: auto; padding-bottom: 5px; }
-        .image-gallery img { width: 80px; height: 80px; object-fit: cover; border-radius: 8px; border: 1px solid #eee; flex-shrink: 0; }
-        .no-image { width: 100%; height: 80px; background: #eee; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: #aaa; margin-bottom: 15px; font-size: 14px; }
+        /* แก้ไขสไตล์การ์ดให้ขอบบนซ่อน overflow เพื่อรองรับรูปเต็มกรอบ */
+        .card { background: white; border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); display: flex; flex-direction: column; justify-content: space-between; overflow: hidden; }
+        .card-body { padding: 20px; display: flex; flex-direction: column; justify-content: space-between; flex-grow: 1; }
+        
+        /* -------------------------------------- */
+        /* 📸 ระบบสไลด์โชว์รูปภาพ (Carousel) */
+        /* -------------------------------------- */
+        .carousel { position: relative; width: 100%; height: 220px; overflow: hidden; background: #eee; }
+        .carousel-track { display: flex; transition: transform 0.3s ease-in-out; height: 100%; }
+        .carousel-img { min-width: 100%; height: 100%; object-fit: cover; }
+        
+        /* ปุ่มเลื่อนซ้าย-ขวา */
+        .carousel-btn { position: absolute; top: 50%; transform: translateY(-50%); background: rgba(0,0,0,0.5); color: white; border: none; width: 32px; height: 32px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 16px; font-weight: bold; transition: 0.2s; z-index: 2; }
+        .carousel-btn:hover { background: rgba(0,0,0,0.8); }
+        .carousel-btn.prev { left: 10px; }
+        .carousel-btn.next { right: 10px; }
+        
+        .no-image { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; color: #aaa; font-size: 15px; }
+        /* -------------------------------------- */
 
         .price { color: #28a745; font-weight: bold; font-size: 1.2em; margin: 10px 0; }
         .stock-info { font-size: 14px; color: #888; margin-bottom: 15px; }
@@ -54,7 +68,7 @@
         const auth = getAuth(app);
         const db = getFirestore(app);
 
-        // ฟังก์ชันสั่งซื้อและตรวจสอบเงื่อนไขเวลา
+        // --- ฟังก์ชันสั่งซื้อ (คงเดิม) ---
         async function createOrder(product, inputId) {
             const user = auth.currentUser;
             if (!user) return alert("กรุณาล็อกอินก่อนสั่งซื้อ");
@@ -64,19 +78,14 @@
 
             const deliveryTime = new Date(deliveryTimeValue);
             const now = new Date();
-
-            // คำนวณส่วนต่างเวลา (มิลลิวินาที)
             const timeDiff = deliveryTime.getTime() - now.getTime();
-            const minimumLeadTime = 3 * 60 * 60 * 1000; // 3 ชั่วโมง
+            const minimumLeadTime = 3 * 60 * 60 * 1000;
 
-            // 💡 ตรวจสอบเงื่อนไข: ต้องมากกว่า 3 ชั่วโมง
             if (timeDiff < minimumLeadTime) {
-                return alert("❌ ไม่สามารถสั่งซื้อได้: ต้องระบุเวลาล่วงหน้ามากกว่า 3 ชั่วโมง นับจากเวลาปัจจุบัน เพื่อให้ผู้รับจ้างมีเวลาเข้ามาประมูลงาน (Bidding)");
+                return alert("❌ ไม่สามารถสั่งซื้อได้: ต้องระบุเวลาล่วงหน้ามากกว่า 3 ชั่วโมง เพื่อให้ผู้รับจ้างมีเวลาเข้ามาประมูลงาน");
             }
 
-            // 💡 คำนวณเวลาสิ้นสุดการประมูล (ก่อนเวลากำหนดส่งสินค้า 30 นาที)
             const biddingEndTime = new Date(deliveryTime.getTime() - (30 * 60 * 1000));
-
             const orderData = {
                 customer_uid: user.uid,
                 store_owner_uid: product.owner_uid,
@@ -84,28 +93,40 @@
                 product_name: product.name,
                 price: product.price,
                 quantity: 1,
-                status: "bidding", // เริ่มต้นที่สถานะกำลังประมูล
-                delivery_time: deliveryTime, // เวลาที่ต้องการของ
-                bidding_end_time: biddingEndTime, // เวลาที่ระบบจะตัดสินผู้ชนะ
+                status: "bidding",
+                delivery_time: deliveryTime,
+                bidding_end_time: biddingEndTime,
                 created_at: now
             };
 
             try {
                 await addDoc(collection(db, "orders"), orderData);
-                alert("🎉 สั่งซื้อสินค้าสำเร็จ! ออเดอร์ของคุณเข้าสู่ระบบ Bidding เรียบร้อยแล้ว");
-                // เคลียร์ช่องเวลาหลังจากสั่งเสร็จ
+                alert("🎉 สั่งซื้อสินค้าสำเร็จ! ออเดอร์เข้าสู่ระบบ Bidding เรียบร้อยแล้ว");
                 document.getElementById(inputId).value = '';
-            } catch (e) {
-                alert("เกิดข้อผิดพลาดในการสั่งซื้อ: " + e.message);
-            }
+            } catch (e) { alert("เกิดข้อผิดพลาดในการสั่งซื้อ: " + e.message); }
         }
 
-        // ดึงรายการสินค้าทั้งหมดมาแสดง
+        // --- ฟังก์ชันจัดการการเลื่อนสไลด์โชว์ ---
+        window.carouselState = {}; // ตัวแปรเก็บตำแหน่งปัจจุบันของแต่ละการ์ด
+        
+        window.moveSlide = (prodId, direction, totalImages) => {
+            let state = window.carouselState;
+            state[prodId] += direction;
+            
+            // วนลูปกลับถ้าเลื่อนสุดทาง
+            if (state[prodId] < 0) state[prodId] = totalImages - 1;
+            if (state[prodId] >= totalImages) state[prodId] = 0;
+            
+            // สั่งขยับรูปภาพผ่าน CSS Transform
+            const track = document.getElementById(`track-${prodId}`);
+            track.style.transform = `translateX(-${state[prodId] * 100}%)`;
+        };
+
+        // --- ฟังก์ชันดึงรายการสินค้า ---
         async function loadProducts() {
             const listDiv = document.getElementById('product-list');
             try {
                 const querySnapshot = await getDocs(collection(db, "products"));
-                
                 if (querySnapshot.empty) {
                     listDiv.innerHTML = "<p style='text-align:center; width:100%; color:#888;'>ยังไม่มีสินค้าในระบบในขณะนี้</p>";
                     return;
@@ -116,49 +137,71 @@
                     const data = productDoc.data();
                     const product = { id: productDoc.id, ...data };
                     const inputId = `time-${product.id}`;
-
-                    // ผูกฟังก์ชันเข้ากับ window object
                     window[`buy_${product.id}`] = () => createOrder(product, inputId);
                     
-                    // 💡 สร้าง HTML สำหรับแสดงรูปภาพ (ดึงจาก Array images ที่บันทึกไว้)
+                    // --- จัดการรูปภาพ (Carousel) ---
                     let imagesHtml = '';
-                    if (data.images && data.images.length > 0) {
-                        imagesHtml = '<div class="image-gallery">';
+                    const numImages = data.images ? data.images.length : 0;
+                    
+                    // ตั้งค่าหน้าเริ่มต้นของสไลด์โชว์
+                    window.carouselState[product.id] = 0;
+
+                    if (numImages > 0) {
+                        let imgsHtmlStr = '';
                         data.images.forEach(url => {
-                            imagesHtml += `<img src="${url}" alt="รูปสินค้า ${data.name}">`;
+                            imgsHtmlStr += `<img src="${url}" class="carousel-img" alt="รูปสินค้า ${data.name}">`;
                         });
-                        imagesHtml += '</div>';
+                        
+                        // ถ้ารูปมีมากกว่า 1 ให้แสดงปุ่มลูกศร
+                        let buttonsHtml = '';
+                        if (numImages > 1) {
+                            buttonsHtml = `
+                                <button class="carousel-btn prev" onclick="window.moveSlide('${product.id}', -1, ${numImages})">&#10094;</button>
+                                <button class="carousel-btn next" onclick="window.moveSlide('${product.id}', 1, ${numImages})">&#10095;</button>
+                            `;
+                        }
+                        
+                        imagesHtml = `
+                            <div class="carousel">
+                                <div class="carousel-track" id="track-${product.id}">
+                                    ${imgsHtmlStr}
+                                </div>
+                                ${buttonsHtml}
+                            </div>
+                        `;
                     } else {
-                        imagesHtml = '<div class="no-image">ไม่มีรูปภาพ</div>';
+                        imagesHtml = `<div class="carousel"><div class="no-image">ไม่มีรูปภาพ</div></div>`;
                     }
                     
+                    // --- ประกอบการ์ดรวม ---
                     html += `
                         <div class="card">
-                            <div>
-                                ${imagesHtml}
-                                <h3 style="margin-top:0; color:#333;">${data.name}</h3>
-                                <p style="color:#666; font-size:14px; min-height: 40px;">${data.description || 'ไม่มีรายละเอียด'}</p>
-                                <p class="price">${data.price} บาท</p>
-                                <p class="stock-info">คงเหลือในสต็อก: ${data.stock} ชิ้น</p>
-                            </div>
-                            <div>
-                                <div class="time-box">
-                                    <label>📅 ระบุเวลารับของ (ล่วงหน้า > 3 ชม.)</label>
-                                    <input type="datetime-local" id="${inputId}">
+                            ${imagesHtml}
+                            <div class="card-body">
+                                <div>
+                                    <h3 style="margin-top:0; color:#333;">${data.name}</h3>
+                                    <p style="color:#666; font-size:14px; min-height: 40px;">${data.description || 'ไม่มีรายละเอียด'}</p>
+                                    <p class="price">${data.price} บาท</p>
+                                    <p class="stock-info">คงเหลือในสต็อก: ${data.stock} ชิ้น</p>
                                 </div>
-                                <button class="btn-buy" onclick="window.buy_${product.id}()">🛒 กดสั่งซื้อสินค้า</button>
+                                <div>
+                                    <div class="time-box">
+                                        <label>📅 ระบุเวลารับของ (ล่วงหน้า > 3 ชม.)</label>
+                                        <input type="datetime-local" id="${inputId}">
+                                    </div>
+                                    <button class="btn-buy" onclick="window.buy_${product.id}()">🛒 กดสั่งซื้อสินค้า</button>
+                                </div>
                             </div>
                         </div>
                     `;
                 });
                 listDiv.innerHTML = html;
             } catch (e) {
-                console.error("Error loading products:", e);
+                console.error(e);
                 listDiv.innerHTML = "<p style='text-align:center; width:100%; color:red;'>เกิดข้อผิดพลาดในการโหลดข้อมูลสินค้า</p>";
             }
         }
 
-        // โหลดสินค้าทันทีที่เปิดหน้าเว็บ
         loadProducts();
     </script>
 </body>
