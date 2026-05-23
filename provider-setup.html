@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ตั้งค่าโปรไฟล์ผู้ให้บริการ - ขอนแก่น แพลตฟอร์ม</title>
+    <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;600&display=swap" rel="stylesheet">
+    
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <style>
+        body { font-family: 'Chakra Petch', sans-serif; padding: 20px; background: #f4f7f6; display: flex; justify-content: center; }
+        .card { background: white; padding: 30px; border-radius: 16px; width: 100%; max-width: 600px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        h2 { color: #fd7e14; margin-top: 0; text-align: center; }
+        label { font-weight: 600; margin-top: 10px; display: block; color: #333; }
+        input[type="text"], textarea { width: 100%; padding: 12px; margin: 5px 0 15px 0; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-family: inherit;}
+        
+        /* สไตล์สำหรับกล่องแผนที่ OpenStreetMap */
+        #map { height: 300px; width: 100%; border-radius: 8px; margin-bottom: 10px; border: 1px solid #ddd; z-index: 1; }
+        .map-instruction { font-size: 14px; color: #dc3545; margin-bottom: 15px; text-align: center; font-weight: 600; }
+        
+        .coord-box { display: flex; gap: 10px; margin-bottom: 20px; }
+        .coord-box input { background: #e9ecef; color: #555; cursor: not-allowed; margin-bottom: 0; }
+
+        button { width: 100%; padding: 12px; background: #fd7e14; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 16px; transition: 0.3s; }
+        button:hover { background: #e06c00; }
+        button:disabled { background: #ccc; cursor: not-allowed; }
+        .back-link { display: block; text-align: center; margin-top: 15px; color: #666; text-decoration: none; font-size: 14px; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h2>🛠️ ตั้งค่าโปรไฟล์ผู้ให้บริการ</h2>
+        <p id="status-msg" style="text-align: center; color: #666;">กำลังตรวจสอบข้อมูลโปรไฟล์...</p>
+        
+        <label>ชื่อผู้ให้บริการ / ชื่อทีมช่าง</label>
+        <input type="text" id="providerName" placeholder="เช่น ช่างเอก บริการตัดหญ้าขอนแก่น">
+        
+        <label>รายละเอียดความเชี่ยวชาญ / ประสบการณ์</label>
+        <textarea id="providerDesc" rows="3" placeholder="อธิบายประวัติการทำงาน พื้นที่รับงาน หรือสโลแกนทีมงาน"></textarea>
+        
+        <label>เบอร์โทรศัพท์ติดต่อ</label>
+        <input type="text" id="providerPhone" placeholder="เช่น 081-2345678">
+        
+        <label>📍 ปักหมุดตำแหน่งศูนย์ปฏิบัติงาน / พื้นที่สแตนด์บาย</label>
+        <p class="map-instruction">คลิกหรือแตะบนแผนที่ เพื่อระบุพิกัดที่ตั้งของท่าน</p>
+        <div id="map"></div>
+        
+        <div class="coord-box">
+            <input type="text" id="lat" placeholder="ละติจูด (Latitude)" readonly>
+            <input type="text" id="lng" placeholder="ลองจิจูด (Longitude)" readonly>
+        </div>
+
+        <button id="btn-save-profile">บันทึกข้อมูลโปรไฟล์</button>
+        <a href="dashboard.html" class="back-link">← กลับไปหน้า Dashboard</a>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-app.js";
+        import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-auth.js";
+        import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-firestore.js";
+
+        // *** ใช้ Config ตัวเดิมของคุณ ***
+        const firebaseConfig = {
+            apiKey: "AIzaSyBCtuNjcjOmDS1Luwg4-B5VoMrnFvlAUFI",
+            authDomain: "marketplace-3c894.firebaseapp.com",
+            projectId: "marketplace-3c894",
+            storageBucket: "marketplace-3c894.firebasestorage.app"
+        };
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        // 1. ตั้งค่าแผนที่เริ่มต้น (โฟกัสเมืองขอนแก่น)
+        let map = L.map('map').setView([16.4322, 102.8236], 13);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '© OpenStreetMap'
+        }).addTo(map);
+
+        let marker; // ตัวแปรเก็บหมุดแผนที่
+
+        // 2. ดักจับเมื่อผู้ให้บริการคลิกเลือกพิกัดบนแผนที่
+        map.on('click', function(e) {
+            const lat = e.latlng.lat;
+            const lng = e.latlng.lng;
+            
+            document.getElementById('lat').value = lat.toFixed(6);
+            document.getElementById('lng').value = lng.toFixed(6);
+
+            // วางหมุดใหม่หรือย้ายตำแหน่งหมุดเดิม
+            if (marker) {
+                marker.setLatLng(e.latlng);
+            } else {
+                marker = L.marker(e.latlng).addTo(map);
+            }
+        });
+
+        const statusMsg = document.getElementById('status-msg');
+
+        // 3. ตรวจสอบสถานะการล็อกอินและดึงข้อมูลโปรไฟล์เดิม (ถ้ามี)
+        onAuthStateChanged(auth, async (user) => {
+            if (!user) return window.location.href = "index.html";
+            
+            try {
+                // ดึงข้อมูลจากคอลเลกชันใหม่ 'providers'
+                const providerRef = doc(db, "providers", user.uid);
+                const docSnap = await getDoc(providerRef);
+                
+                if (docSnap.exists()) {
+                    const data = docSnap.data();
+                    document.getElementById('providerName').value = data.name || "";
+                    document.getElementById('providerDesc').value = data.description || "";
+                    document.getElementById('providerPhone').value = data.phone || "";
+                    
+                    // หากเคยปักหมุดไว้แล้ว ให้แสดงผลหมุดเดิมและเลื่อนแผนที่ไปจุดนั้น
+                    if(data.location && data.location.lat && data.location.lng) {
+                        document.getElementById('lat').value = data.location.lat;
+                        document.getElementById('lng').value = data.location.lng;
+                        
+                        const savedLatLng = [data.location.lat, data.location.lng];
+                        map.setView(savedLatLng, 15);
+                        marker = L.marker(savedLatLng).addTo(map);
+                    }
+                    
+                    statusMsg.innerText = "ท่านสามารถแก้ไขข้อมูลโปรไฟล์ปัจจุบันได้ที่ฟอร์มด้านล่าง";
+                } else {
+                    statusMsg.innerText = "ยังไม่มีข้อมูลโปรไฟล์ กรุณากรอกข้อมูลและปักหมุดเพื่อเปิดรับงาน";
+                }
+            } catch (e) {
+                console.error("Error loading provider profile:", e);
+                statusMsg.innerText = "เกิดข้อผิดพลาดในการดึงข้อมูลจากเซิร์ฟเวอร์";
+            }
+        });
+
+        // 4. บันทึกข้อมูลลง Firestore คอลเลกชัน providers
+        document.getElementById('btn-save-profile').onclick = async () => {
+            const user = auth.currentUser;
+            const name = document.getElementById('providerName').value;
+            const desc = document.getElementById('providerDesc').value;
+            const phone = document.getElementById('providerPhone').value;
+            const lat = parseFloat(document.getElementById('lat').value);
+            const lng = parseFloat(document.getElementById('lng').value);
+
+            if(!name) return alert("กรุณาระบุชื่อผู้ให้บริการ หรือชื่อทีมงาน");
+            if(!phone) return alert("กรุณาระบุเบอร์โทรศัพท์ติดต่อ");
+            if(!lat || !lng || isNaN(lat)) return alert("กรุณาคลิกปักหมุดพิกัดตำแหน่งบนแผนที่");
+
+            const btn = document.getElementById('btn-save-profile');
+            btn.innerText = "กำลังบันทึกข้อมูล...";
+            btn.disabled = true;
+
+            try {
+                // บันทึกโดยใช้ ID Document เป็น UID ของผู้ใช้งานโดยตรงเพื่อความปลอดภัยและง่ายต่อการค้นหา
+                await setDoc(doc(db, "providers", user.uid), {
+                    name: name,
+                    description: desc,
+                    phone: phone,
+                    location: {
+                        lat: lat,
+                        lng: lng
+                    },
+                    provider_uid: user.uid,
+                    updated_at: new Date()
+                });
+                alert("🎉 บันทึกโปรไฟล์และพิกัดผู้ให้บริการสำเร็จ!");
+                window.location.href = "dashboard.html";
+            } catch (e) {
+                alert("เกิดข้อผิดพลาดในการบันทึก: " + e.message);
+            } finally {
+                btn.innerText = "บันทึกข้อมูลโปรไฟล์";
+                btn.disabled = false;
+            }
+        };
+    </script>
+</body>
+</html>
