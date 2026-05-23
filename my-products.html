@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>รายการสินค้าของฉัน - ขอนแก่น มาร์เก็ตเพลส</title>
+    <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Chakra Petch', sans-serif; padding: 20px; background: #f4f7f6; }
+        .container { max-width: 800px; margin: auto; background: white; padding: 30px; border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        h2 { color: #fd7e14; margin-top: 0; text-align: center; }
+        .btn-add { background: #28a745; color: white; padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; text-decoration: none; display: inline-block; margin-bottom: 20px; }
+        
+        /* สไตล์ตารางรายการสินค้า */
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #ddd; }
+        th { background-color: #f8f9fa; color: #333; font-weight: 600; }
+        
+        .stock-input { width: 60px; padding: 6px; border: 1px solid #ddd; border-radius: 4px; text-align: center; }
+        .btn-update { background: #007BFF; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 14px; margin-left: 5px; }
+        .btn-delete { background: #dc3545; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 14px; }
+        .btn-delete:hover { background: #bd2130; }
+        .btn-update:hover { background: #0069d9; }
+        
+        .back-link { display: block; text-align: center; margin-top: 20px; color: #666; text-decoration: none; font-size: 14px; }
+        .no-data { text-align: center; color: #888; padding: 20px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>📦 รายการสินค้าภายในร้าน</h2>
+        
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <a href="add-product.html" class="btn-add">+ เพิ่มสินค้าใหม่</a>
+            <p id="loading-status" style="color: #666;">กำลังโหลดข้อมูล...</p>
+        </div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>ชื่อสินค้า</th>
+                    <th>ราคา (บาท)</th>
+                    <th>จำนวนในสต็อก</th>
+                    <th>จัดการ</th>
+                </tr>
+            </thead>
+            <tbody id="product-table-body">
+                </tbody>
+        </table>
+        
+        <div id="empty-msg" class="no-data" style="display: none;">ยังไม่มีสินค้าในร้านค้าของคุณ</div>
+
+        <a href="dashboard.html" class="back-link">← กลับไปหน้า Dashboard</a>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-app.js";
+        import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-auth.js";
+        import { getFirestore, collection, query, where, getDocs, doc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-firestore.js";
+
+        // *** ใส่ Config ของคุณที่นี่ ***
+        const firebaseConfig = {
+            apiKey: "AIzaSyBCtuNjcjOmDS1Luwg4-B5VoMrnFvlAUFI",
+            authDomain: "marketplace-3c894.firebaseapp.com",
+            projectId: "marketplace-3c894",
+            storageBucket: "marketplace-3c894.firebasestorage.app"
+        };
+        
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        // ตรวจสอบการล็อกอิน และดึงข้อมูลสินค้า
+        onAuthStateChanged(auth, (user) => {
+            if (!user) {
+                window.location.href = "index.html";
+            } else {
+                loadMyProducts(user.uid);
+            }
+        });
+
+        // ฟังก์ชันดึงรายการสินค้าเฉพาะของร้านตัวเอง
+        async function loadMyProducts(ownerUid) {
+            const tbody = document.getElementById('product-table-body');
+            const loadingStatus = document.getElementById('loading-status');
+            const emptyMsg = document.getElementById('empty-msg');
+            
+            tbody.innerHTML = ""; // ล้างข้อมูลเดิมก่อนโหลด
+            
+            try {
+                // 💡 ใช้ Query คัดกรองเอาเฉพาะสินค้าที่มี owner_uid ตรงกับร้านค้านี้
+                const q = query(collection(db, "products"), where("owner_uid", "==", ownerUid));
+                const querySnapshot = await getDocs(q);
+                
+                loadingStatus.innerText = "";
+
+                if (querySnapshot.empty) {
+                    emptyMsg.style.display = "block";
+                    return;
+                }
+
+                emptyMsg.style.display = "none";
+                
+                querySnapshot.forEach((productDoc) => {
+                    const prod = productDoc.data();
+                    const prodId = productDoc.id;
+                    
+                    // ผูกฟังก์ชันสำหรับการทำงานของปุ่มไว้กับระบบ window object เพื่อให้เรียกใช้จาก HTML ได้
+                    window[`updateStock_${prodId}`] = async () => {
+                        const newStock = parseInt(document.getElementById(`stock-${prodId}`).value);
+                        if(isNaN(newStock) || newStock < 0) return alert("กรุณากรอกจำนวนสต็อกที่ถูกต้อง");
+                        
+                        try {
+                            await updateDoc(doc(db, "products", prodId), { stock: newStock });
+                            alert("อัปเดตสต็อกสำเร็จ!");
+                        } catch(err) { alert("ล้มเหลว: " + err.message); }
+                    };
+
+                    window[`deleteProduct_${prodId}`] = async () => {
+                        if (confirm(`คุณต้องการลบสินค้า "${prod.name}" ใช่หรือไม่?`)) {
+                            try {
+                                await deleteDoc(doc(db, "products", prodId));
+                                alert("ลบสินค้าเรียบร้อยแล้ว");
+                                loadMyProducts(ownerUid); // โหลดรายการสินค้าใหม่หลังจากลบ
+                            } catch(err) { alert("ล้มเหลว: " + err.message); }
+                        }
+                    };
+
+                    // แทรกแถวเข้าไปในตาราง
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td><b>${prod.name}</b><br><small style="color:#666;">${prod.description || ''}</small></td>
+                        <td>${prod.price} บาท</td>
+                        <td>
+                            <input type="number" id="stock-${prodId}" class="stock-input" value="${prod.stock}" min="0">
+                            <button class="btn-update" onclick="window.updateStock_${prodId}()">อัปเดต</button>
+                        </td>
+                        <td>
+                            <button class="btn-delete" onclick="window.deleteProduct_${prodId}()">ลบ</button>
+                        </td>
+                    `;
+                    tbody.appendChild(row);
+                });
+                
+            } catch (error) {
+                console.error("Error loading products:", error);
+                loadingStatus.innerText = "เกิดข้อผิดพลาดในการดึงข้อมูล";
+            }
+        }
+    </script>
+</body>
+</html>
