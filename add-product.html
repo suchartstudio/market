@@ -8,20 +8,31 @@
     <style>
         body { font-family: 'Chakra Petch', sans-serif; padding: 20px; background: #f4f7f6; display: flex; justify-content: center; }
         .card { background: white; padding: 30px; border-radius: 16px; width: 100%; max-width: 500px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
-        h2 { color: #fd7e14; margin-top: 0; }
-        input, textarea { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-family: inherit;}
-        button { width: 100%; padding: 12px; margin-top: 10px; background: #28a745; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 16px;}
-        button:disabled { background: #ccc; }
+        h2 { color: #fd7e14; margin-top: 0; text-align: center; }
+        label { font-weight: 600; margin-top: 10px; display: block; color: #333; }
+        input[type="text"], input[type="number"], textarea { width: 100%; padding: 12px; margin: 5px 0 15px 0; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-family: inherit;}
+        
+        button { width: 100%; padding: 12px; background: #28a745; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 16px; transition: 0.3s; }
+        button:hover { background: #218838; }
+        button:disabled { background: #ccc; cursor: not-allowed; }
         .back-link { display: block; text-align: center; margin-top: 15px; color: #666; text-decoration: none; font-size: 14px; }
     </style>
 </head>
 <body>
     <div class="card">
-        <h2>เพิ่มสินค้าใหม่</h2>
-        <input type="text" id="prodName" placeholder="ชื่อสินค้า">
-        <textarea id="prodDesc" rows="3" placeholder="รายละเอียดสินค้า"></textarea>
-        <input type="number" id="prodPrice" placeholder="ราคา (บาท)">
-        <input type="number" id="prodStock" placeholder="จำนวนในสต็อก">
+        <h2>📝 เพิ่มสินค้าใหม่</h2>
+        
+        <label>ชื่อสินค้า / บริการ</label>
+        <input type="text" id="prodName" placeholder="เช่น ส้มตำไทยไข่เค็ม">
+        
+        <label>รายละเอียดสินค้า</label>
+        <textarea id="prodDesc" rows="3" placeholder="อธิบายส่วนผสม หรือจุดเด่น"></textarea>
+        
+        <label>ราคา (บาท)</label>
+        <input type="number" id="prodPrice" placeholder="เช่น 50" min="0">
+        
+        <label>จำนวนในสต็อก (ชิ้น/จาน)</label>
+        <input type="number" id="prodStock" placeholder="เช่น 100" min="0">
         
         <button id="btn-add-product">บันทึกสินค้าลงร้าน</button>
         <a href="dashboard.html" class="back-link">← กลับไปหน้า Dashboard</a>
@@ -29,14 +40,25 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-app.js";
-        import { getAuth } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-auth.js";
+        import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-auth.js";
         import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-firestore.js";
 
-        // *** ใส่ Config ของคุณตรงนี้ ***
-        const firebaseConfig = { /* ใส่ Config เดิมของคุณ */ };
+        // *** ใส่ Config ของคุณที่นี่ ***
+        const firebaseConfig = {
+            apiKey: "AIzaSyBCtuNjcjOmDS1Luwg4-B5VoMrnFvlAUFI",
+            authDomain: "marketplace-3c894.firebaseapp.com",
+            projectId: "marketplace-3c894",
+            storageBucket: "marketplace-3c894.firebasestorage.app"
+        };
+        
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
+
+        // เช็คว่าล็อกอินอยู่หรือไม่ ถ้าไม่ได้ล็อกอินให้เด้งกลับหน้าแรก
+        onAuthStateChanged(auth, (user) => {
+            if (!user) window.location.href = "index.html";
+        });
 
         document.getElementById('btn-add-product').onclick = async () => {
             const user = auth.currentUser;
@@ -44,27 +66,38 @@
 
             const name = document.getElementById('prodName').value;
             const desc = document.getElementById('prodDesc').value;
+            // แปลงค่าจากข้อความเป็นตัวเลข (เพื่อให้คำนวณราคาและสต็อกได้ในอนาคต)
             const price = parseFloat(document.getElementById('prodPrice').value);
             const stock = parseInt(document.getElementById('prodStock').value);
 
-            if(!name || !price) return alert("กรุณากรอกชื่อและราคาให้ครบ");
+            // ตรวจสอบความถูกต้องของข้อมูล
+            if(!name) return alert("กรุณากรอกชื่อสินค้า");
+            if(isNaN(price) || price < 0) return alert("กรุณากรอกราคาที่ถูกต้อง");
+            if(isNaN(stock) || stock < 0) return alert("กรุณากรอกจำนวนสต็อกที่ถูกต้อง");
 
             const btn = document.getElementById('btn-add-product');
             btn.disabled = true;
             btn.innerText = "กำลังบันทึก...";
 
             try {
-                // บันทึกลง collection 'products'
+                // บันทึกลง collection 'products' (จะสร้าง document ID ให้อัตโนมัติ)
                 await addDoc(collection(db, "products"), {
                     name: name,
                     description: desc,
                     price: price,
                     stock: stock,
-                    owner_uid: user.uid, // สำคัญมาก: เพื่อให้ Firestore Rules ยอมรับ
+                    owner_uid: user.uid, // หัวใจสำคัญ! บันทึกว่าใครเป็นเจ้าของสินค้านี้
                     created_at: new Date()
                 });
+                
                 alert("เพิ่มสินค้าสำเร็จ!");
-                window.location.href = "dashboard.html";
+                
+                // ล้างค่าในฟอร์มเพื่อเตรียมรับสินค้าชิ้นต่อไป หรือจะเด้งกลับ Dashboard ก็ได้
+                document.getElementById('prodName').value = '';
+                document.getElementById('prodDesc').value = '';
+                document.getElementById('prodPrice').value = '';
+                document.getElementById('prodStock').value = '';
+                
             } catch (e) {
                 alert("เกิดข้อผิดพลาด: " + e.message);
                 console.error(e);
