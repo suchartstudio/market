@@ -75,7 +75,7 @@
                 // 🟠 เมนูแสดงผลอัตโนมัติของฝั่ง "ผู้ให้บริการ / ช่าง (Provider)"
                 else if (data.role === "provider") {
                     menusHTML = `
-                        <button class="menu-btn btn-provider" onclick="alert('กำลังพัฒนา: หน้าโปรไฟล์แผนที่ผู้ให้บริการ')">🛠️ ตั้งค่าโปรไฟล์และตำแหน่งช่าง</button>
+                        <button class="menu-btn btn-provider" onclick="location.href='provider-setup.html'">🛠️ ตั้งค่าโปรไฟล์และตำแหน่งช่าง</button>
                         <button class="menu-btn btn-provider" onclick="location.href='my-services.html'">📋 จัดการรายการบริการและราคา</button>
                         <button class="menu-btn btn-provider" onclick="alert('กำลังพัฒนา: หน้าใบงานที่มีคนจ้าง')">🔔 ดูรายการงานที่มีลูกค้าจ้างเข้ามา</button>
                     `;
