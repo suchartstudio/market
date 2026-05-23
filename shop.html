@@ -3,50 +3,36 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>เลือกซื้อสินค้า - ขอนแก่น มาร์เก็ตเพลส</title>
+    <title>ค้นหาและจ้างบริการ - ขอนแก่น แพลตฟอร์ม</title>
     <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;600&display=swap" rel="stylesheet">
     <style>
         body { font-family: 'Chakra Petch', sans-serif; padding: 20px; background: #f4f7f6; }
         h2 { text-align: center; color: #333; margin-bottom: 30px; }
-        .product-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; max-width: 1200px; margin: auto; }
+        .service-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; max-width: 1200px; margin: auto; }
         
-        /* แก้ไขสไตล์การ์ดให้ขอบบนซ่อน overflow เพื่อรองรับรูปเต็มกรอบ */
+        /* สไตล์การ์ดงานบริการชิดขอบรูปด้านบน */
         .card { background: white; border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); display: flex; flex-direction: column; justify-content: space-between; overflow: hidden; }
+        .card-img { width: 100%; height: 200px; object-fit: cover; background: #eee; }
         .card-body { padding: 20px; display: flex; flex-direction: column; justify-content: space-between; flex-grow: 1; }
         
-        /* -------------------------------------- */
-        /* 📸 ระบบสไลด์โชว์รูปภาพ (Carousel) */
-        /* -------------------------------------- */
-        .carousel { position: relative; width: 100%; height: 220px; overflow: hidden; background: #eee; }
-        .carousel-track { display: flex; transition: transform 0.3s ease-in-out; height: 100%; }
-        .carousel-img { min-width: 100%; height: 100%; object-fit: cover; }
+        .price-tag { color: #28a745; font-weight: bold; font-size: 1.2em; margin: 10px 0; }
         
-        /* ปุ่มเลื่อนซ้าย-ขวา */
-        .carousel-btn { position: absolute; top: 50%; transform: translateY(-50%); background: rgba(0,0,0,0.5); color: white; border: none; width: 32px; height: 32px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 16px; font-weight: bold; transition: 0.2s; z-index: 2; }
-        .carousel-btn:hover { background: rgba(0,0,0,0.8); }
-        .carousel-btn.prev { left: 10px; }
-        .carousel-btn.next { right: 10px; }
-        
-        .no-image { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; color: #aaa; font-size: 15px; }
-        /* -------------------------------------- */
-
-        .price { color: #28a745; font-weight: bold; font-size: 1.2em; margin: 10px 0; }
-        .stock-info { font-size: 14px; color: #888; margin-bottom: 15px; }
-        
-        .time-box { background: #eef2f7; padding: 10px; border-radius: 8px; margin: 10px 0; text-align: left; }
+        /* กล่องเลือกเวลานัดหมาย */
+        .time-box { background: #eef2f7; padding: 12px; border-radius: 8px; margin: 12px 0; text-align: left; }
         .time-box label { font-size: 14px; font-weight: 600; color: #555; display: block; margin-bottom: 5px; }
         .time-box input { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 6px; font-family: inherit; box-sizing: border-box; }
         
-        .btn-buy { width: 100%; padding: 12px; background: #007BFF; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 16px; margin-top: 10px; transition: 0.2s; }
-        .btn-buy:hover { background: #0056b3; }
+        .btn-hire { width: 100%; padding: 12px; background: #28a745; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 16px; margin-top: 10px; transition: 0.2s; }
+        .btn-hire:hover { background: #218838; }
         .back-link { display: block; text-align: center; margin-top: 30px; color: #666; text-decoration: none; font-size: 14px; }
+        .no-data { text-align: center; width: 100%; color: #888; grid-column: 1 / -1; padding: 40px; }
     </style>
 </head>
 <body>
-    <h2>🛒 รายการสินค้าและบริการทั้งหมด</h2>
+    <h2>🔍 รายการบริการที่มีในระบบ</h2>
     
-    <div class="product-grid" id="product-list">
-        <p style="text-align: center; width: 100%; color: #666;">กำลังโหลดรายการสินค้า...</p>
+    <div class="service-grid" id="service-list">
+        <p style="text-align: center; width: 100%; color: #666;">กำลังค้นหางานบริการในระบบ...</p>
     </div>
     
     <a href="dashboard.html" class="back-link">← กลับไปหน้า Dashboard</a>
@@ -56,7 +42,7 @@
         import { getAuth } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-auth.js";
         import { getFirestore, collection, getDocs, addDoc } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-firestore.js";
 
-        // *** ใส่ Config ของคุณ ***
+        // *** ใช้ Config ตัวเดิมของคุณ ***
         const firebaseConfig = {
             apiKey: "AIzaSyBCtuNjcjOmDS1Luwg4-B5VoMrnFvlAUFI",
             authDomain: "marketplace-3c894.firebaseapp.com",
@@ -68,128 +54,88 @@
         const auth = getAuth(app);
         const db = getFirestore(app);
 
-        // --- ฟังก์ชันสั่งซื้อ (คงเดิม) ---
-        async function createOrder(product, inputId) {
+        // 💡 ฟังก์ชันส่งใบจ้างงานนัดหมายเวลา (Direct Booking - ไม่ประมูล)
+        async function hireService(service, inputId) {
             const user = auth.currentUser;
-            if (!user) return alert("กรุณาล็อกอินก่อนสั่งซื้อ");
+            if (!user) return alert("กรุณาล็อกอินเข้าสู่ระบบก่อนทำการจ้างงาน");
 
-            const deliveryTimeValue = document.getElementById(inputId).value;
-            if (!deliveryTimeValue) return alert("กรุณาระบุเวลาที่ต้องการรับสินค้า/บริการ");
+            const appointmentTimeValue = document.getElementById(inputId).value;
+            if (!appointmentTimeValue) return alert("กรุณาระบุ วัน-เวลา ที่ท่านต้องการรับบริการ");
 
-            const deliveryTime = new Date(deliveryTimeValue);
+            const appointmentTime = new Date(appointmentTimeValue);
             const now = new Date();
-            const timeDiff = deliveryTime.getTime() - now.getTime();
-            const minimumLeadTime = 3 * 60 * 60 * 1000;
 
-            if (timeDiff < minimumLeadTime) {
-                return alert("❌ ไม่สามารถสั่งซื้อได้: ต้องระบุเวลาล่วงหน้ามากกว่า 3 ชั่วโมง เพื่อให้ผู้รับจ้างมีเวลาเข้ามาประมูลงาน");
+            if (appointmentTime <= now) {
+                return alert("❌ ไม่สามารถเลือกเวลาในอดีตได้ กรุณาเลือกวันและเวลาที่ต้องการล่วงหน้า");
             }
 
-            const biddingEndTime = new Date(deliveryTime.getTime() - (30 * 60 * 1000));
+            const btn = document.querySelector(`button[onclick*="${service.id}"]`);
+            if(btn) { btn.disabled = true; btn.innerText = "กำลังส่งใบจ้างงาน..."; }
+
+            // เตรียมโครงสร้างข้อมูลส่งลงคอลเลกชัน orders ใหม่ (ตัดระบบสต็อกและ bidding ทิ้ง)
             const orderData = {
-                customer_uid: user.uid,
-                store_owner_uid: product.owner_uid,
-                product_id: product.id,
-                product_name: product.name,
-                price: product.price,
-                quantity: 1,
-                status: "bidding",
-                delivery_time: deliveryTime,
-                bidding_end_time: biddingEndTime,
+                customer_uid: user.uid,              // ID ลูกค้าคนจ้าง
+                provider_uid: service.provider_uid,  // ID ช่างผู้ให้บริการ (ส่งตรงถึงช่างรายนี้)
+                service_id: service.id,
+                product_name: service.name,          // ใช้ชื่อฟิลด์เดิมในระบบเพื่อให้สอดคล้องกับโครงสร้างเก่า
+                price: service.price,                // ราคาตายตัวที่ช่างกำหนด
+                status: "pending",                   // สถานะเริ่มต้น: รอยืนยันรับงานจากช่าง
+                appointment_time: appointmentTime,   // วันเวลานัดหมายทำบริการ
                 created_at: now
             };
 
             try {
                 await addDoc(collection(db, "orders"), orderData);
-                alert("🎉 สั่งซื้อสินค้าสำเร็จ! ออเดอร์เข้าสู่ระบบ Bidding เรียบร้อยแล้ว");
+                alert(`🎉 ส่งใบจ้างงาน "${service.name}" สำเร็จ! กรุณารอช่างตรวจสอบและกดยืนยันรับงาน`);
                 document.getElementById(inputId).value = '';
-            } catch (e) { alert("เกิดข้อผิดพลาดในการสั่งซื้อ: " + e.message); }
+            } catch (e) {
+                alert("เกิดข้อผิดพลาดในการจ้างงาน: " + e.message);
+                console.error(e);
+            } finally {
+                if(btn) { btn.disabled = false; btn.innerText = "🤝 กดจ้างงานบริการ"; }
+            }
         }
 
-        // --- ฟังก์ชันจัดการการเลื่อนสไลด์โชว์ ---
-        window.carouselState = {}; // ตัวแปรเก็บตำแหน่งปัจจุบันของแต่ละการ์ด
-        
-        window.moveSlide = (prodId, direction, totalImages) => {
-            let state = window.carouselState;
-            state[prodId] += direction;
-            
-            // วนลูปกลับถ้าเลื่อนสุดทาง
-            if (state[prodId] < 0) state[prodId] = totalImages - 1;
-            if (state[prodId] >= totalImages) state[prodId] = 0;
-            
-            // สั่งขยับรูปภาพผ่าน CSS Transform
-            const track = document.getElementById(`track-${prodId}`);
-            track.style.transform = `translateX(-${state[prodId] * 100}%)`;
-        };
-
-        // --- ฟังก์ชันดึงรายการสินค้า ---
-        async function loadProducts() {
-            const listDiv = document.getElementById('product-list');
+        // 💡 ฟังก์ชันดึงรายการงานบริการทั้งหมดขึ้นมาแสดง (เปลี่ยนมาดึงคอลเลกชัน services)
+        async function loadAllServices() {
+            const listDiv = document.getElementById('service-list');
             try {
-                const querySnapshot = await getDocs(collection(db, "products"));
+                const querySnapshot = await getDocs(collection(db, "services"));
+                
                 if (querySnapshot.empty) {
-                    listDiv.innerHTML = "<p style='text-align:center; width:100%; color:#888;'>ยังไม่มีสินค้าในระบบในขณะนี้</p>";
+                    listDiv.innerHTML = "<div class='no-data'>😔 ขณะนี้ยังไม่มีผู้ให้บริการรายใดลงทะเบียนงานบริการไว้ในระบบ</div>";
                     return;
                 }
 
                 let html = "";
-                querySnapshot.forEach((productDoc) => {
-                    const data = productDoc.data();
-                    const product = { id: productDoc.id, ...data };
-                    const inputId = `time-${product.id}`;
-                    window[`buy_${product.id}`] = () => createOrder(product, inputId);
-                    
-                    // --- จัดการรูปภาพ (Carousel) ---
-                    let imagesHtml = '';
-                    const numImages = data.images ? data.images.length : 0;
-                    
-                    // ตั้งค่าหน้าเริ่มต้นของสไลด์โชว์
-                    window.carouselState[product.id] = 0;
+                querySnapshot.forEach((serviceDoc) => {
+                    const data = serviceDoc.data();
+                    const service = { id: serviceDoc.id, ...data };
+                    const inputId = `time-${service.id}`;
 
-                    if (numImages > 0) {
-                        let imgsHtmlStr = '';
-                        data.images.forEach(url => {
-                            imgsHtmlStr += `<img src="${url}" class="carousel-img" alt="รูปสินค้า ${data.name}">`;
-                        });
-                        
-                        // ถ้ารูปมีมากกว่า 1 ให้แสดงปุ่มลูกศร
-                        let buttonsHtml = '';
-                        if (numImages > 1) {
-                            buttonsHtml = `
-                                <button class="carousel-btn prev" onclick="window.moveSlide('${product.id}', -1, ${numImages})">&#10094;</button>
-                                <button class="carousel-btn next" onclick="window.moveSlide('${product.id}', 1, ${numImages})">&#10095;</button>
-                            `;
-                        }
-                        
-                        imagesHtml = `
-                            <div class="carousel">
-                                <div class="carousel-track" id="track-${product.id}">
-                                    ${imgsHtmlStr}
-                                </div>
-                                ${buttonsHtml}
-                            </div>
-                        `;
-                    } else {
-                        imagesHtml = `<div class="carousel"><div class="no-image">ไม่มีรูปภาพ</div></div>`;
-                    }
+                    // ผูกฟังก์ชันเข้ากับหน้าต่าง window object
+                    window[`hire_${service.id}`] = () => hireService(service, inputId);
                     
-                    // --- ประกอบการ์ดรวม ---
+                    // แสดงผลรูปภาพเดี่ยวของบริการ
+                    const imgHtml = data.image_url 
+                        ? `<img src="${data.image_url}" class="card-img" alt="${data.name}">`
+                        : `<div class="card-img" style="display:flex; align-items:center; justify-content:center; color:#aaa; font-size:14px;">ไม่มีรูปภาพตัวอย่าง</div>`;
+                    
                     html += `
                         <div class="card">
-                            ${imagesHtml}
+                            ${imgHtml}
                             <div class="card-body">
                                 <div>
                                     <h3 style="margin-top:0; color:#333;">${data.name}</h3>
-                                    <p style="color:#666; font-size:14px; min-height: 40px;">${data.description || 'ไม่มีรายละเอียด'}</p>
-                                    <p class="price">${data.price} บาท</p>
-                                    <p class="stock-info">คงเหลือในสต็อก: ${data.stock} ชิ้น</p>
+                                    <p style="color:#666; font-size:14px; min-height: 40px;">${data.description || 'ไม่มีรายละเอียดเพิ่มเติม'}</p>
+                                    <p class="price-tag">ราคา: ${data.price} บาท</p>
                                 </div>
                                 <div>
                                     <div class="time-box">
-                                        <label>📅 ระบุเวลารับของ (ล่วงหน้า > 3 ชม.)</label>
+                                        <label>📅 เลือกวัน-เวลาที่ต้องการนัดคิวช่าง:</label>
                                         <input type="datetime-local" id="${inputId}">
                                     </div>
-                                    <button class="btn-buy" onclick="window.buy_${product.id}()">🛒 กดสั่งซื้อสินค้า</button>
+                                    <button class="btn-hire" onclick="window.hire_${service.id}()">🤝 กดจ้างงานบริการ</button>
                                 </div>
                             </div>
                         </div>
@@ -197,12 +143,13 @@
                 });
                 listDiv.innerHTML = html;
             } catch (e) {
-                console.error(e);
-                listDiv.innerHTML = "<p style='text-align:center; width:100%; color:red;'>เกิดข้อผิดพลาดในการโหลดข้อมูลสินค้า</p>";
+                console.error("Error loading services:", e);
+                listDiv.innerHTML = "<div class='no-data' style='color:red;'>⚠️ เกิดข้อผิดพลาดในการเชื่อมต่อข้อมูลบริการจากฐานข้อมูล</div>";
             }
         }
 
-        loadProducts();
+        // เรียกทำงานทันทีที่เข้าหน้าเว็บ
+        loadAllServices();
     </script>
 </body>
 </html>
