@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>รายการงานที่ลูกค้าจ้าง - ขอนแก่น แพลตฟอร์ม</title>
+    <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Chakra Petch', sans-serif; padding: 20px; background: #f4f7f6; }
+        .container { max-width: 900px; margin: auto; background: white; padding: 30px; border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        h2 { color: #fd7e14; margin-top: 0; text-align: center; }
+        
+        .job-card { background: #fff; border: 1px solid #e0e0e0; border-radius: 12px; padding: 20px; margin-bottom: 15px; box-shadow: 0 2px 6px rgba(0,0,0,0.05); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; }
+        .job-details h3 { margin: 0 0 10px 0; color: #333; }
+        .job-details p { margin: 5px 0; color: #555; font-size: 15px; }
+        
+        /* สไตล์ป้ายสถานะ */
+        .badge { padding: 6px 12px; border-radius: 20px; font-weight: 600; font-size: 14px; display: inline-block; }
+        .badge-pending { background-color: #fff3cd; color: #856404; }
+        .badge-accepted { background-color: #d1ecf1; color: #0c5460; }
+        .badge-completed { background-color: #d4edda; color: #155724; }
+        .badge-cancelled { background-color: #f8d7da; color: #721c24; }
+
+        .action-section { text-align: right; display: flex; flex-direction: column; gap: 10px; align-items: flex-end; min-width: 150px; }
+        .time-highlight { color: #dc3545; font-weight: 600; }
+        
+        /* สไตล์ปุ่มกดจัดการใบงาน */
+        .btn-action { color: white; border: none; padding: 10px 16px; border-radius: 8px; cursor: pointer; font-family: inherit; font-size: 14px; font-weight: 600; transition: 0.2s; width: 100%; }
+        .btn-accept { background: #007BFF; }
+        .btn-accept:hover { background: #0069d9; }
+        .btn-complete { background: #28a745; }
+        .btn-complete:hover { background: #218838; }
+
+        .back-link { display: block; text-align: center; margin-top: 25px; color: #666; text-decoration: none; font-size: 14px; }
+        .no-data { text-align: center; color: #888; padding: 40px; font-size: 16px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>🔔 รายการใบงานที่ลูกค้าจ้างเข้ามา</h2>
+        <div id="loading-msg" style="text-align: center; color: #666; margin: 15px 0;">กำลังเชื่อมต่อระบบงานเรยลไทม์...</div>
+        
+        <div id="jobs-list"></div>
+
+        <a href="dashboard.html" class="back-link">← กลับไปหน้า Dashboard</a>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-app.js";
+        import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-auth.js";
+        import { getFirestore, collection, query, where, onSnapshot, doc, updateDoc } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-firestore.js";
+
+        // *** ใช้ Config ตัวเดิมของคุณ ***
+        const firebaseConfig = {
+            apiKey: "AIzaSyBCtuNjcjOmDS1Luwg4-B5VoMrnFvlAUFI",
+            authDomain: "marketplace-3c894.firebaseapp.com",
+            projectId: "marketplace-3c894",
+            storageBucket: "marketplace-3c894.firebasestorage.app"
+        };
+        
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        onAuthStateChanged(auth, (user) => {
+            if (!user) {
+                window.location.href = "index.html";
+            } else {
+                listenToProviderJobs(user.uid);
+            }
+        });
+
+        // 💡 ฟังก์ชันจับตาดูใบงานที่ส่งมาหาช่างคนนี้แบบเรียลไทม์
+        function listenToProviderJobs(providerUid) {
+            const listDiv = document.getElementById('jobs-list');
+            const loadingMsg = document.getElementById('loading-msg');
+
+            // ดึงเฉพาะใบงานที่ถูกส่งมาหาตนเอง (provider_uid ตรงกัน)
+            const q = query(collection(db, "orders"), where("provider_uid", "==", providerUid));
+
+            onSnapshot(q, (snapshot) => {
+                loadingMsg.style.display = "none";
+                listDiv.innerHTML = "";
+
+                if (snapshot.empty) {
+                    listDiv.innerHTML = '<div class="no-data">ยังไม่มีลูกค้าส่งใบจ้างงานเข้ามาหาท่านในขณะนี้</div>';
+                    return;
+                }
+
+                // ดึงข้อมูลมาจัดเรียงในฝั่ง JavaScript (เลี่ยงปัญหาระบบบังคับสร้าง Composite Index)
+                let jobs = [];
+                snapshot.forEach(docSnap => {
+                    jobs.push({ id: docSnap.id, ...docSnap.data() });
+                });
+                
+                // เรียงลำดับงานที่ส่งเข้ามาล่าสุดขึ้นก่อน
+                jobs.sort((a, b) => b.created_at.seconds - a.created_at.seconds);
+
+                jobs.forEach((job) => {
+                    // 💡 ฟังก์ชัน 1: กดยืนยันตอบรับงาน
+                    window[`acceptJob_${job.id}`] = async () => {
+                        if(confirm("ท่านยืนยันที่จะรับคิวจ้างงานนี้และจะไปให้บริการตามเวลานัดใช่หรือไม่?")) {
+                            try {
+                                await updateDoc(doc(db, "orders", job.id), { status: "accepted" });
+                                alert("รับงานสำเร็จ! กรุณาเตรียมตัวไปให้บริการลูกค้า");
+                            } catch(err) { alert("เกิดข้อผิดพลาด: " + err.message); }
+                        }
+                    };
+
+                    // 💡 ฟังก์ชัน 2: กดปิดงานเมื่อทำเสร็จสิ้น
+                    window[`completeJob_${job.id}`] = async () => {
+                        if(confirm("ท่านได้ให้บริการแก่ลูกค้าเสร็จสิ้นสมบูรณ์แล้วใช่หรือไม่?")) {
+                            try {
+                                await updateDoc(doc(db, "orders", job.id), { status: "completed" });
+                                alert("ปิดงานสำเร็จ! ขอบคุณที่ให้บริการ");
+                            } catch(err) { alert("เกิดข้อผิดพลาด: " + err.message); }
+                        }
+                    };
+
+                    const createdAt = job.created_at ? new Date(job.created_at.seconds * 1000).toLocaleString('th-TH') : '-';
+                    const appointmentTime = job.appointment_time ? new Date(job.appointment_time.seconds * 1000).toLocaleString('th-TH') : '-';
+                    
+                    let statusBadge = '';
+                    let statusText = '';
+                    let actionBtnHtml = '';
+
+                    // ตรวจเช็คสถานะเพื่อวาดปุ่มและป้ายสีที่เหมาะสม
+                    if (job.status === 'pending') {
+                        statusText = '⏳ ลูกค้ารอท่านยืนยัน';
+                        statusBadge = 'badge-pending';
+                        actionBtnHtml = `<button class="btn-action btn-accept" onclick="window.acceptJob_${job.id}()">🤝 กดยืนยันรับงาน</button>`;
+                    } else if (job.status === 'accepted') {
+                        statusText = '🛠️ กำลังดำเนินการ (รับงานแล้ว)';
+                        statusBadge = 'badge-accepted';
+                        actionBtnHtml = `<button class="btn-action btn-complete" onclick="window.completeJob_${job.id}()">✅ งานเสร็จสิ้นแล้ว</button>`;
+                    } else if (job.status === 'completed') {
+                        statusText = '✅ ปิดงานเสร็จสมบูรณ์';
+                        statusBadge = 'badge-completed';
+                    } else if (job.status === 'cancelled') {
+                        statusText = '❌ ลูกค้ายกเลิกงานแล้ว';
+                        statusBadge = 'badge-cancelled';
+                    }
+
+                    const card = document.createElement('div');
+                    card.className = 'job-card';
+                    card.innerHTML = `
+                        <div class="job-details">
+                            <h3>📋 บริการที่ถูกจ้าง: ${job.product_name}</h3>
+                            <p><b>💰 รายได้ที่จะได้รับ:</b> <span style="color:#28a745; font-weight:bold;">${job.price} บาท</span></p>
+                            <p><b>🕒 วันเวลาที่ลูกค้าส่งจ้าง:</b> ${createdAt}</p>
+                            <p class="time-highlight"><b>📍 วันเวลานัดหมายทำบริการ:</b> ${appointmentTime}</p>
+                            <p style="font-size:12px; color:#aaa;">Customer UID: ${job.customer_uid}</p>
+                        </div>
+                        <div class="action-section">
+                            <span class="badge ${statusBadge}">${statusText}</span>
+                            ${actionBtnHtml}
+                        </div>
+                    `;
+                    listDiv.appendChild(card);
+                });
+            }, (error) => {
+                console.error("Error listening to provider jobs: ", error);
+            });
+        }
+    </script>
+</body>
+</html>
