@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ประวัติและตารางคิวงาน - ขอนแก่น แพลตฟอร์ม</title>
+    <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Chakra Petch', sans-serif; padding: 20px; background: #f4f7f6; }
+        .container { max-width: 900px; margin: auto; background: white; padding: 30px; border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        h2 { color: #28a745; margin-top: 0; text-align: center; }
+        
+        .booking-card { background: #fff; border: 1px solid #e0e0e0; border-radius: 12px; padding: 20px; margin-bottom: 15px; box-shadow: 0 2px 6px rgba(0,0,0,0.05); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;}
+        .booking-details h3 { margin: 0 0 10px 0; color: #333; }
+        .booking-details p { margin: 5px 0; color: #555; font-size: 15px; }
+        
+        /* สไตล์สำหรับป้ายสถานะ */
+        .badge { padding: 6px 12px; border-radius: 20px; font-weight: 600; font-size: 14px; display: inline-block; }
+        .badge-pending { background-color: #fff3cd; color: #856404; }
+        .badge-accepted { background-color: #d1ecf1; color: #0c5460; }
+        .badge-completed { background-color: #d4edda; color: #155724; }
+        .badge-cancelled { background-color: #f8d7da; color: #721c24; }
+
+        .status-section { text-align: right; display: flex; flex-direction: column; gap: 10px; align-items: flex-end;}
+        .time-highlight { color: #007BFF; font-weight: 600; }
+        
+        .btn-cancel { background: #dc3545; color: white; border: none; padding: 8px 12px; border-radius: 6px; cursor: pointer; font-family: inherit; font-size: 13px; font-weight: 600; transition: 0.2s; }
+        .btn-cancel:hover { background: #c82333; }
+
+        .back-link { display: block; text-align: center; margin-top: 25px; color: #666; text-decoration: none; font-size: 14px; }
+        .no-data { text-align: center; color: #888; padding: 40px; font-size: 16px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>📅 ตารางงานที่ฉันจองคิวไว้</h2>
+        <div id="loading-msg" style="text-align: center; color: #666; margin: 15px 0;">กำลังเชื่อมต่อฐานข้อมูล...</div>
+        
+        <div id="bookings-list"></div>
+
+        <a href="dashboard.html" class="back-link">← กลับไปหน้า Dashboard</a>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-app.js";
+        import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-auth.js";
+        import { getFirestore, collection, query, where, onSnapshot, doc, updateDoc } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-firestore.js";
+
+        // *** ใส่ Config ของคุณ ***
+        const firebaseConfig = {
+            apiKey: "AIzaSyBCtuNjcjOmDS1Luwg4-B5VoMrnFvlAUFI",
+            authDomain: "marketplace-3c894.firebaseapp.com",
+            projectId: "marketplace-3c894",
+            storageBucket: "marketplace-3c894.firebasestorage.app"
+        };
+        
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        onAuthStateChanged(auth, (user) => {
+            if (!user) {
+                window.location.href = "index.html";
+            } else {
+                listenToMyBookings(user.uid);
+            }
+        });
+
+        // ฟังก์ชันดึงและฟังสเตตัสงานแบบ Real-time
+        function listenToMyBookings(customerUid) {
+            const listDiv = document.getElementById('bookings-list');
+            const loadingMsg = document.getElementById('loading-msg');
+
+            // Query เฉพาะงานที่ตัวเองเป็นคนจ้าง
+            const q = query(collection(db, "orders"), where("customer_uid", "==", customerUid));
+
+            onSnapshot(q, (snapshot) => {
+                loadingMsg.style.display = "none";
+                listDiv.innerHTML = ""; 
+
+                if (snapshot.empty) {
+                    listDiv.innerHTML = '<div class="no-data">คุณยังไม่มีประวัติการจองคิวงานบริการในขณะนี้</div>';
+                    return;
+                }
+
+                // ดึงข้อมูลมาจัดเรียงใน JavaScript (เพื่อเลี่ยงปัญหาต้องไปกดสร้าง Index ใน Firebase)
+                let bookings = [];
+                snapshot.forEach(docSnap => {
+                    bookings.push({ id: docSnap.id, ...docSnap.data() });
+                });
+                
+                // เรียงลำดับจากสร้างล่าสุดไปเก่าสุด
+                bookings.sort((a, b) => b.created_at.seconds - a.created_at.seconds);
+
+                bookings.forEach((order) => {
+                    // ผูกฟังก์ชันยกเลิกงาน
+                    window[`cancelOrder_${order.id}`] = async () => {
+                        if(confirm(`ยืนยันการยกเลิกคิวงาน "${order.product_name}" ใช่หรือไม่?`)) {
+                            try {
+                                await updateDoc(doc(db, "orders", order.id), { status: "cancelled" });
+                                alert("ยกเลิกคิวงานสำเร็จ");
+                            } catch(err) { alert("เกิดข้อผิดพลาด: " + err.message); }
+                        }
+                    };
+
+                    const createdAt = order.created_at ? new Date(order.created_at.seconds * 1000).toLocaleString('th-TH') : '-';
+                    const appointmentTime = order.appointment_time ? new Date(order.appointment_time.seconds * 1000).toLocaleString('th-TH') : '-';
+                    
+                    let statusBadge = '';
+                    let statusText = '';
+                    let cancelBtnHtml = '';
+
+                    // เช็คสถานะเพื่อเปลี่ยนสีป้าย และปุ่มยกเลิก
+                    if (order.status === 'pending') {
+                        statusText = '⏳ รอยืนยันจากช่าง';
+                        statusBadge = 'badge-pending';
+                        // อนุญาตให้ลูกค้ายกเลิกได้เฉพาะตอนที่ช่างยังไม่รับงาน
+                        cancelBtnHtml = `<button class="btn-cancel" onclick="window.cancelOrder_${order.id}()">❌ ยกเลิกคิวงาน</button>`;
+                    } else if (order.status === 'accepted') {
+                        statusText = '🛠️ ช่างยืนยันรับงานแล้ว';
+                        statusBadge = 'badge-accepted';
+                    } else if (order.status === 'completed') {
+                        statusText = '✅ บริการเสร็จสิ้น';
+                        statusBadge = 'badge-completed';
+                    } else if (order.status === 'cancelled') {
+                        statusText = '❌ ยกเลิกแล้ว';
+                        statusBadge = 'badge-cancelled';
+                    }
+
+                    const card = document.createElement('div');
+                    card.className = 'booking-card';
+                    card.innerHTML = `
+                        <div class="booking-details">
+                            <h3>📋 บริการ: ${order.product_name}</h3>
+                            <p><b>💰 ราคาที่ตกลง:</b> ${order.price} บาท</p>
+                            <p><b>🕒 สั่งงานเมื่อ:</b> ${createdAt}</p>
+                            <p class="time-highlight"><b>📍 เวลานัดหมายทำบริการ:</b> ${appointmentTime}</p>
+                        </div>
+                        <div class="status-section">
+                            <span class="badge ${statusBadge}">${statusText}</span>
+                            ${cancelBtnHtml}
+                        </div>
+                    `;
+                    listDiv.appendChild(card);
+                });
+            }, (error) => {
+                console.error("Error:", error);
+                loadingMsg.innerHTML = "<span style='color:red;'>ข้อผิดพลาดในการดึงข้อมูล</span>";
+            });
+        }
+    </script>
+</body>
+</html>
