@@ -5,34 +5,41 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>รายการงานที่ลูกค้าจ้าง - ขอนแก่น แพลตฟอร์ม</title>
     <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;600&display=swap" rel="stylesheet">
-    <style>
-        body { font-family: 'Chakra Petch', sans-serif; padding: 20px; background: #f4f7f6; }
-        .container { max-width: 900px; margin: auto; background: white; padding: 30px; border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
-        h2 { color: #fd7e14; margin-top: 0; text-align: center; }
-        
-        .job-card { background: #fff; border: 1px solid #e0e0e0; border-radius: 12px; padding: 20px; margin-bottom: 15px; box-shadow: 0 2px 6px rgba(0,0,0,0.05); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; }
-        .job-details h3 { margin: 0 0 10px 0; color: #333; }
-        .job-details p { margin: 5px 0; color: #555; font-size: 15px; }
-        
-        .badge { padding: 6px 12px; border-radius: 20px; font-weight: 600; font-size: 14px; display: inline-block; }
-        .badge-pending { background-color: #fff3cd; color: #856404; }
-        .badge-accepted { background-color: #d1ecf1; color: #0c5460; }
-        .badge-completed { background-color: #d4edda; color: #155724; }
-        .badge-cancelled { background-color: #f8d7da; color: #721c24; }
+   <style>
+        /* 🎨 ระบบตัวแปรสีรองรับ Dark/Light Mode อัตโนมัติ */
+        :root {
+            --bg-color: #f4f7f6; --card-bg: #ffffff; --text-main: #222222; --text-sub: #666666;
+            --border-color: #dddddd; --primary: #fd7e14;
+        }
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg-color: #121212; --card-bg: #1e1e1e; --text-main: #ffffff; --text-sub: #bbbbbb;
+                --border-color: #444444; --primary: #e85d04;
+            }
+        }
 
-        .action-section { text-align: right; display: flex; flex-direction: column; gap: 10px; align-items: flex-end; min-width: 180px; }
-        .time-highlight { color: #dc3545; font-weight: 600; }
+        body { font-family: 'Chakra Petch', sans-serif; background: var(--bg-color); color: var(--text-main); padding: 20px; font-size: 18px; margin: 0; transition: background 0.3s, color 0.3s; }
+        .container { max-width: 900px; margin: auto; background: var(--card-bg); padding: 30px; border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); border: 1px solid var(--border-color); }
+        h2 { color: var(--primary); margin-top: 0; text-align: center; font-size: 32px; }
         
-        .btn-action { color: white; border: none; padding: 10px 16px; border-radius: 8px; cursor: pointer; font-family: inherit; font-size: 14px; font-weight: 600; transition: 0.2s; width: 100%; text-align: center; text-decoration: none; display: block; box-sizing: border-box;}
+        .job-card { background: var(--bg-color); border: 1px solid var(--border-color); border-radius: 12px; padding: 20px; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; }
+        .job-details h3 { margin: 0 0 10px 0; color: var(--text-main); font-size: 22px; }
+        .job-details p { margin: 5px 0; color: var(--text-sub); font-size: 18px; }
+        
+        .badge { padding: 6px 12px; border-radius: 20px; font-weight: 600; font-size: 14px; display: inline-block; color: white; }
+        .badge-pending { background-color: #f39c12; }
+        .badge-accepted { background-color: #3498db; }
+        .badge-completed { background-color: #27ae60; }
+        .badge-cancelled { background-color: #c0392b; }
+
+        .action-section { text-align: right; display: flex; flex-direction: column; gap: 10px; align-items: flex-end; }
+        
+        .btn-action { color: white; border: none; padding: 12px 16px; border-radius: 8px; cursor: pointer; font-family: inherit; font-size: 16px; font-weight: 600; width: 100%; text-align: center; text-decoration: none; display: block; }
         .btn-accept { background: #007BFF; }
-        .btn-accept:hover { background: #0069d9; }
         .btn-complete { background: #28a745; }
-        .btn-complete:hover { background: #218838; }
         .btn-nav { background: #17a2b8; margin-bottom: 5px; }
-        .btn-nav:hover { background: #138496; }
 
-        .back-link { display: block; text-align: center; margin-top: 25px; color: #666; text-decoration: none; font-size: 14px; }
-        .no-data { text-align: center; color: #888; padding: 40px; font-size: 16px; }
+        .back-link { display: block; text-align: center; margin-top: 25px; color: var(--text-sub); text-decoration: none; font-size: 20px; font-weight: bold; }
     </style>
 </head>
 <body>
