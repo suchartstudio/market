@@ -9,51 +9,31 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
     <style>
-        /* 🎨 ระบบตัวแปรสีตั้งต้น (โหมดสว่าง) */
-        :root {
-            --bg-color: #f4f7f6; --card-bg: #ffffff; --text-main: #222222; --text-sub: #666666;
-            --border-color: #dddddd; --box-bg: #f8f9fa; --input-bg: #ffffff; --primary: #007BFF;
-        }
+        :root { --bg-color: #f4f7f6; --card-bg: #ffffff; --text-main: #222222; --text-sub: #666666; --border-color: #dddddd; --box-bg: #f8f9fa; --input-bg: #ffffff; --primary: #007BFF; }
         @media (prefers-color-scheme: dark) {
-            :root {
-                --bg-color: #121212; --card-bg: #1e1e1e; --text-main: #ffffff; --text-sub: #bbbbbb;
-                --border-color: #444444; --box-bg: #2a2a2a; --input-bg: #333333; --primary: #3b9aff;
-            }
+            :root { --bg-color: #121212; --card-bg: #1e1e1e; --text-main: #ffffff; --text-sub: #bbbbbb; --border-color: #444444; --box-bg: #2a2a2a; --input-bg: #333333; --primary: #3b9aff; }
         }
-
-        body { font-family: 'Chakra Petch', sans-serif; background: var(--bg-color); color: var(--text-main); padding: 20px; font-size: 18px; margin: 0; }
+        body { font-family: 'Chakra Petch', sans-serif; background: var(--bg-color); color: var(--text-main); padding: 20px; font-size: 18px; margin: 0; transition: background 0.3s, color 0.3s; }
         h2 { text-align: center; font-size: 32px; color: var(--primary); margin-bottom: 20px; }
-        
-        /* 🔍 ส่วนค้นหาและหมวดหมู่ */
         .search-section { background: var(--card-bg); padding: 20px; border-radius: 16px; border: 1px solid var(--border-color); max-width: 1200px; margin: 0 auto 30px auto; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
         .search-bar { width: 100%; padding: 15px; font-size: 20px; border-radius: 10px; border: 2px solid var(--border-color); background: var(--input-bg); color: var(--text-main); font-family: inherit; box-sizing: border-box; margin-bottom: 15px; }
         .search-bar:focus { border-color: var(--primary); outline: none; }
-        
-        /* 💡 แก้ไขแถบหมวดหมู่ให้ Wrap (เรียงเป็นชั้นๆ) */
-        .category-filters { display: flex; flex-wrap: wrap; gap: 10px; padding-bottom: 10px; justify-content: center; }
-        .cat-btn { padding: 10px 20px; border-radius: 30px; border: 1px solid var(--border-color); background: var(--input-bg); color: var(--text-main); cursor: pointer; font-family: inherit; font-size: 16px; font-weight: 600; white-space: nowrap; transition: 0.2s; }
+        .category-filters { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
+        .cat-btn { padding: 10px 20px; border-radius: 30px; border: 1px solid var(--border-color); background: var(--input-bg); color: var(--text-main); cursor: pointer; font-family: inherit; font-size: 16px; font-weight: 600; transition: 0.2s; }
         .cat-btn.active { background: var(--primary); color: white; border-color: var(--primary); }
-        
-        /* 📍 แบนเนอร์ค้นหาระยะทาง */
-        .distance-banner { background: #e0f2fe; border: 1px solid #bae6fd; color: #0369a1; padding: 15px; border-radius: 12px; margin-bottom: 25px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; max-width: 1200px; margin-left: auto; margin-right: auto;}
+        .distance-banner { background: #e0f2fe; border: 1px solid #bae6fd; color: #0369a1; padding: 15px; border-radius: 12px; margin: 0 auto 25px auto; display: flex; justify-content: space-between; align-items: center; max-width: 1200px; flex-wrap: wrap; gap: 10px;}
         @media (prefers-color-scheme: dark) { .distance-banner { background: #0c4a6e; border-color: #075985; color: #e0f2fe; } }
         .btn-calc-dist { background: #0284c7; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: bold; font-family: inherit; }
-
-        /* 📋 การ์ดบริการ */
         .service-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 25px; max-width: 1200px; margin: auto; }
-        .card { background: var(--card-bg); border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); border: 1px solid var(--border-color); overflow: hidden; display: flex; flex-direction: column; justify-content: space-between; }
+        .card { background: var(--card-bg); border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); border: 1px solid var(--border-color); overflow: hidden; display: flex; flex-direction: column; }
         .card-img { width: 100%; height: 220px; object-fit: cover; background: #eee; }
         .card-body { padding: 25px; display: flex; flex-direction: column; flex-grow: 1; }
-        .card-body h3 { font-size: 24px; margin: 0 0 10px 0; }
-        
-        .meta-info { display: flex; justify-content: space-between; font-size: 16px; margin-bottom: 15px; color: var(--text-sub); background: var(--box-bg); padding: 10px; border-radius: 8px; border: 1px dashed var(--border-color); }
+        .card-body h3 { font-size: 24px; margin: 0 0 5px 0; }
+        .meta-info { display: flex; justify-content: space-between; align-items: center; font-size: 16px; margin: 15px 0; color: var(--text-sub); background: var(--box-bg); padding: 10px; border-radius: 8px; border: 1px dashed var(--border-color); }
         .dist-text { color: #dc3545; font-weight: bold; }
-        
         .price-tag { color: #28a745; font-weight: 700; font-size: 24px; margin: 15px 0; }
-        .btn-hire { width: 100%; padding: 15px; background: var(--primary); color: white; border: none; border-radius: 10px; cursor: pointer; font-weight: bold; font-size: 22px; font-family: inherit; margin-top: auto; transition: 0.2s;}
+        .btn-hire { width: 100%; padding: 15px; background: var(--primary); color: white; border: none; border-radius: 10px; cursor: pointer; font-weight: bold; font-size: 20px; font-family: inherit; margin-top: auto; transition: 0.2s;}
         .btn-hire:hover { opacity: 0.9; }
-        
-        /* 🛠️ Popup Modal */
         .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.6); display: none; align-items: center; justify-content: center; z-index: 1000; padding: 20px; }
         .modal-content { background: var(--card-bg); padding: 30px; border-radius: 16px; width: 100%; max-width: 600px; max-height: 90vh; overflow-y: auto; border: 1px solid var(--border-color); box-shadow: 0 10px 30px rgba(0,0,0,0.3); }
         .modal-content h3 { margin-top: 0; color: var(--primary); font-size: 26px; border-bottom: 2px solid var(--border-color); padding-bottom: 10px; }
@@ -62,8 +42,8 @@
         #modalMap { height: 250px; width: 100%; border-radius: 10px; border: 1px solid var(--border-color); z-index: 1; margin-bottom: 15px; }
         .btn-gps { background: #17a2b8; color: white; border: none; padding: 12px; border-radius: 10px; font-size: 18px; font-weight: 600; cursor: pointer; width: 100%; font-family: inherit; margin-bottom: 10px;}
         .modal-actions { display: flex; gap: 15px; margin-top: 25px; }
-        .btn-confirm { flex: 2; padding: 15px; background: #28a745; color: white; border: none; border-radius: 10px; font-size: 20px; font-weight: bold; cursor: pointer; }
-        .btn-cancel { flex: 1; padding: 15px; background: #dc3545; color: white; border: none; border-radius: 10px; font-size: 20px; font-weight: bold; cursor: pointer; }
+        .btn-confirm { flex: 2; padding: 15px; background: #28a745; color: white; border: none; border-radius: 10px; font-size: 20px; font-weight: bold; cursor: pointer; font-family: inherit;}
+        .btn-cancel { flex: 1; padding: 15px; background: #dc3545; color: white; border: none; border-radius: 10px; font-size: 20px; font-weight: bold; cursor: pointer; font-family: inherit;}
         .back-link { display: block; text-align: center; margin-top: 40px; color: var(--text-sub); text-decoration: none; font-size: 20px; font-weight: bold; padding-bottom: 30px;}
     </style>
 </head>
@@ -71,8 +51,7 @@
     <h2>🔍 ค้นหาและจ้างงาน - งานดีขอนแก่น</h2>
 
     <div class="search-section">
-        <input type="text" id="searchInput" class="search-bar" placeholder="🔎 ค้นหางานบริการ (เช่น ล้างแอร์, ตัดหญ้า, ซ่อมคอม)...">
-        
+        <input type="text" id="searchInput" class="search-bar" placeholder="🔎 ค้นหางานบริการ...">
         <div class="category-filters" id="categoryBox">
             <button class="cat-btn active" data-cat="all">🌟 ทั้งหมด</button>
             <button class="cat-btn" data-cat="cleaning">🧹 ทำความสะอาด</button>
@@ -91,7 +70,7 @@
     </div>
 
     <div class="distance-banner" id="distanceBanner">
-        <span>📍 เปิดตำแหน่งเพื่อคำนวณระยะทางว่าผู้ให้บริการอยู่ห่างจากคุณกี่กิโลเมตร</span>
+        <span>📍 เปิดตำแหน่งเพื่อคำนวณระยะทาง</span>
         <button class="btn-calc-dist" id="btn-enable-gps">🎯 คำนวณระยะทาง</button>
     </div>
 
@@ -122,7 +101,6 @@
     </div>
 
     <script type="module">
-        // --- เปลี่ยนโค้ดส่วนของ สคริปต์ ในไฟล์ services.html เป็นชุดนี้ได้เลยครับ ---
         import { initializeApp } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-app.js";
         import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-auth.js";
         import { getFirestore, collection, getDocs, addDoc } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-firestore.js";
@@ -143,7 +121,8 @@
 
         let allServices = [];
         let providersData = {};
-        let reviewsData = {}; // 🌟 ตัวแปรเก็บข้อมูลคะแนนรีวิว
+        let reviewsData = {};
+        let usersData = {}; // 🌟 เพิ่มตัวแปรเก็บข้อมูลรายชื่อช่าง
         let userLocation = null; 
         let currentFilter = 'all';
 
@@ -168,14 +147,18 @@
             }
         });
 
-        // 🔄 โหลดข้อมูลทั้งหมด (รวมถึงรีวิว)
+        // 🔄 โหลดข้อมูลทั้งหมด
         async function loadData() {
             try {
-                // 1. โหลดพิกัดช่าง
+                // 1. โหลดพิกัด
                 const provSnap = await getDocs(collection(db, "providers"));
                 provSnap.forEach(doc => { providersData[doc.id] = doc.data(); });
 
-                // 2. 🌟 โหลดและคำนวณคะแนนรีวิวจากตาราง reviews
+                // 2. 🌟 โหลดข้อมูลผู้ใช้งาน (เพื่อเอาชื่อของช่างมาแสดง)
+                const usersSnap = await getDocs(collection(db, "users"));
+                usersSnap.forEach(doc => { usersData[doc.id] = doc.data(); });
+
+                // 3. โหลดรีวิว
                 const revSnap = await getDocs(collection(db, "reviews"));
                 revSnap.forEach(doc => {
                     const data = doc.data();
@@ -186,7 +169,7 @@
                     reviewsData[data.service_id].count += 1;
                 });
 
-                // 3. โหลดบริการทั้งหมด
+                // 4. โหลดบริการ
                 const srvSnap = await getDocs(collection(db, "services"));
                 srvSnap.forEach(doc => { allServices.push({ id: doc.id, ...doc.data() }); });
                 
@@ -208,20 +191,21 @@
                 if (!matchKeyword || !matchCat) return;
                 count++;
 
-                // 🌟 คำนวณและแสดงคะแนนรีวิว
+                // 🌟 ดึงชื่อช่าง/ร้าน จากตาราง Users
+                const providerUser = usersData[srv.provider_uid];
+                const shopName = (providerUser && providerUser.name) ? providerUser.name : "ไม่ระบุชื่อผู้ให้บริการ";
+
+                // คำนวณดาว
                 let reviewHtml = "<span>⭐ ยังไม่มีรีวิว</span>";
                 if (reviewsData[srv.id]) {
                     const rData = reviewsData[srv.id];
-                    const avgScore = (rData.totalRating / rData.count).toFixed(1); // หาค่าเฉลี่ยทศนิยม 1 ตำแหน่ง
-                    reviewHtml = `
-                        <span style="color: #ffc107; font-weight: bold; font-size: 18px;">⭐ ${avgScore}</span> 
-                        <span style="font-size: 14px;">(${rData.count} รีวิว)</span>
-                    `;
+                    const avgScore = (rData.totalRating / rData.count).toFixed(1);
+                    reviewHtml = `<span style="color: #ffc107; font-weight: bold; font-size: 18px;">⭐ ${avgScore}</span> <span style="font-size: 14px;">(${rData.count} รีวิว)</span>`;
                 }
 
                 // คำนวณระยะทาง
                 const provider = providersData[srv.provider_uid];
-                let distanceText = "ระยะทาง: ไม่ทราบตำแหน่งผู้ให้บริการ";
+                let distanceText = "ระยะทาง: ไม่ทราบตำแหน่ง";
                 if (userLocation && provider && provider.location) {
                     const dist = calcDistance(userLocation.lat, userLocation.lng, provider.location.lat, provider.location.lng);
                     distanceText = `<span class="dist-text">📍 ห่างจากคุณ: ${dist.toFixed(1)} กม.</span>`;
@@ -237,6 +221,7 @@
                         ${imgHtml}
                         <div class="card-body">
                             <h3>${srv.name}</h3>
+                            <p style="color: var(--primary); font-weight: bold; font-size: 16px; margin: 0 0 10px 0;">🏪 ผู้ให้บริการ: ${shopName}</p>
                             <p style="color: var(--text-sub); font-size: 16px;">${srv.description || ''}</p>
                             
                             <div class="meta-info">
@@ -266,7 +251,7 @@
 
         loadData();
 
-        // --- ระบบ Popup Modal สำหรับจ้างงาน (เหมือนเดิม) ---
+        // --- ระบบ Popup Modal ---
         let currentServiceToBook = null;
         let map = null;
         let marker = null;
