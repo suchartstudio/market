@@ -10,10 +10,10 @@
         .card { background: white; padding: 30px; border-radius: 16px; width: 100%; max-width: 500px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
         h2 { color: #fd7e14; margin-top: 0; text-align: center; }
         label { font-weight: 600; margin-top: 10px; display: block; color: #333; }
-        input[type="text"], input[type="number"], textarea { width: 100%; padding: 12px; margin: 5px 0 15px 0; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-family: inherit;}
-        
+        input[type="text"], input[type="number"], textarea, input[type="file"] { width: 100%; padding: 12px; margin: 5px 0 15px 0; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-family: inherit;}
+        .img-preview { display: flex; gap: 10px; margin-bottom: 15px; }
+        .img-preview img { width: 80px; height: 80px; object-fit: cover; border-radius: 8px; border: 1px solid #ddd; }
         button { width: 100%; padding: 12px; background: #28a745; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 16px; transition: 0.3s; }
-        button:hover { background: #218838; }
         button:disabled { background: #ccc; cursor: not-allowed; }
         .back-link { display: block; text-align: center; margin-top: 15px; color: #666; text-decoration: none; font-size: 14px; }
     </style>
@@ -22,6 +22,11 @@
     <div class="card">
         <h2>📝 เพิ่มสินค้าใหม่</h2>
         
+        <label>รูปภาพสินค้า (สูงสุด 3 รูป)</label>
+        <input type="file" id="prodImages" accept="image/*" multiple>
+        <div class="img-preview" id="preview-container"></div>
+        <p id="upload-status" style="color: #007BFF; font-size: 14px; display: none;">กำลังอัปโหลดรูปภาพ...</p>
+
         <label>ชื่อสินค้า / บริการ</label>
         <input type="text" id="prodName" placeholder="เช่น ส้มตำไทยไข่เค็ม">
         
@@ -42,8 +47,9 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-app.js";
         import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-auth.js";
         import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-firestore.js";
+        // 💡 นำเข้า Storage สำหรับอัปโหลดภาพ
+        import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-storage.js";
 
-        // *** ใส่ Config ของคุณที่นี่ ***
         const firebaseConfig = {
             apiKey: "AIzaSyBCtuNjcjOmDS1Luwg4-B5VoMrnFvlAUFI",
             authDomain: "marketplace-3c894.firebaseapp.com",
@@ -54,10 +60,26 @@
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
+        const storage = getStorage(app); // เรียกใช้ Storage
 
-        // เช็คว่าล็อกอินอยู่หรือไม่ ถ้าไม่ได้ล็อกอินให้เด้งกลับหน้าแรก
-        onAuthStateChanged(auth, (user) => {
-            if (!user) window.location.href = "index.html";
+        onAuthStateChanged(auth, (user) => { if (!user) window.location.href = "index.html"; });
+
+        // พรีวิวรูปภาพก่อนอัปโหลด
+        const fileInput = document.getElementById('prodImages');
+        const previewContainer = document.getElementById('preview-container');
+
+        fileInput.addEventListener('change', () => {
+            previewContainer.innerHTML = '';
+            if (fileInput.files.length > 3) {
+                alert("กรุณาเลือกรูปภาพไม่เกิน 3 รูป");
+                fileInput.value = ''; // ล้างค่า
+                return;
+            }
+            Array.from(fileInput.files).forEach(file => {
+                const img = document.createElement('img');
+                img.src = URL.createObjectURL(file);
+                previewContainer.appendChild(img);
+            });
         });
 
         document.getElementById('btn-add-product').onclick = async () => {
@@ -66,44 +88,53 @@
 
             const name = document.getElementById('prodName').value;
             const desc = document.getElementById('prodDesc').value;
-            // แปลงค่าจากข้อความเป็นตัวเลข (เพื่อให้คำนวณราคาและสต็อกได้ในอนาคต)
             const price = parseFloat(document.getElementById('prodPrice').value);
             const stock = parseInt(document.getElementById('prodStock').value);
+            const files = fileInput.files;
 
-            // ตรวจสอบความถูกต้องของข้อมูล
-            if(!name) return alert("กรุณากรอกชื่อสินค้า");
-            if(isNaN(price) || price < 0) return alert("กรุณากรอกราคาที่ถูกต้อง");
-            if(isNaN(stock) || stock < 0) return alert("กรุณากรอกจำนวนสต็อกที่ถูกต้อง");
+            if(!name || isNaN(price) || isNaN(stock)) return alert("กรุณากรอกข้อมูลให้ครบถ้วนและถูกต้อง");
 
             const btn = document.getElementById('btn-add-product');
+            const statusText = document.getElementById('upload-status');
             btn.disabled = true;
-            btn.innerText = "กำลังบันทึก...";
+            statusText.style.display = 'block';
 
             try {
-                // บันทึกลง collection 'products' (จะสร้าง document ID ให้อัตโนมัติ)
+                // 1. อัปโหลดรูปภาพทั้งหมดและเก็บ URL
+                let imageUrls = [];
+                for (let i = 0; i < files.length; i++) {
+                    const file = files[i];
+                    // สร้างที่เก็บไฟล์ เช่น products/UID_ร้านค้า/123456_image.jpg
+                    const storageRef = ref(storage, `products/${user.uid}/${Date.now()}_${file.name}`);
+                    statusText.innerText = `กำลังอัปโหลดรูปที่ ${i + 1} จาก ${files.length}...`;
+                    
+                    await uploadBytes(storageRef, file);
+                    const downloadUrl = await getDownloadURL(storageRef);
+                    imageUrls.push(downloadUrl);
+                }
+
+                statusText.innerText = "กำลังบันทึกข้อมูลสินค้า...";
+
+                // 2. บันทึกข้อมูลลง Firestore พร้อมกับ Array ของ URL รูปภาพ
                 await addDoc(collection(db, "products"), {
                     name: name,
                     description: desc,
                     price: price,
                     stock: stock,
-                    owner_uid: user.uid, // หัวใจสำคัญ! บันทึกว่าใครเป็นเจ้าของสินค้านี้
+                    images: imageUrls, // เพิ่มฟิลด์รูปภาพเข้าไป
+                    owner_uid: user.uid,
                     created_at: new Date()
                 });
                 
                 alert("เพิ่มสินค้าสำเร็จ!");
-                
-                // ล้างค่าในฟอร์มเพื่อเตรียมรับสินค้าชิ้นต่อไป หรือจะเด้งกลับ Dashboard ก็ได้
-                document.getElementById('prodName').value = '';
-                document.getElementById('prodDesc').value = '';
-                document.getElementById('prodPrice').value = '';
-                document.getElementById('prodStock').value = '';
+                window.location.href = "my-products.html";
                 
             } catch (e) {
                 alert("เกิดข้อผิดพลาด: " + e.message);
                 console.error(e);
             } finally {
                 btn.disabled = false;
-                btn.innerText = "บันทึกสินค้าลงร้าน";
+                statusText.style.display = 'none';
             }
         };
     </script>
