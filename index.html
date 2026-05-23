@@ -6,7 +6,7 @@
     <title>งานดีขอนแก่น - เข้าสู่ระบบ</title>
     <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
-        /* 🎨 ระบบตัวแปรสีรองรับโหมดสว่าง/มืด */
+        /* 🎨 ระบบตัวแปรสีตั้งต้น (โหมดสว่าง) */
         :root {
             --bg-color: #f4f7f6;
             --card-bg: #ffffff;
@@ -16,20 +16,23 @@
             --btn-google: #ffffff;
             --btn-google-text: #333333;
         }
-        [data-theme="dark"] {
-            --bg-color: #121212;
-            --card-bg: #1e1e1e;
-            --text-main: #ffffff;
-            --text-sub: #bbbbbb;
-            --border-color: #444444;
-            --btn-google: #333333;
-            --btn-google-text: #ffffff;
+        
+        /* 🌑 อ่านค่าจากระบบเครื่อง หากเครื่องตั้ง Dark Mode ไว้ จะใช้สีชุดนี้อัตโนมัติ */
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg-color: #121212;
+                --card-bg: #1e1e1e;
+                --text-main: #ffffff;
+                --text-sub: #bbbbbb;
+                --border-color: #444444;
+                --btn-google: #333333;
+                --btn-google-text: #ffffff;
+            }
         }
 
-        body { font-family: 'Chakra Petch', sans-serif; background: var(--bg-color); color: var(--text-main); display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; font-size: 18px; transition: background 0.3s; }
-        .login-card { background: var(--card-bg); padding: 40px; border-radius: 20px; box-shadow: 0 8px 24px rgba(0,0,0,0.15); text-align: center; width: 100%; max-width: 450px; border: 1px solid var(--border-color); }
+        body { font-family: 'Chakra Petch', sans-serif; background: var(--bg-color); color: var(--text-main); display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; font-size: 18px; transition: background 0.3s, color 0.3s; }
+        .login-card { background: var(--card-bg); padding: 40px; border-radius: 20px; box-shadow: 0 8px 24px rgba(0,0,0,0.15); text-align: center; width: 100%; max-width: 450px; border: 1px solid var(--border-color); transition: background 0.3s, border-color 0.3s; }
         
-        /* ชื่อแพลตฟอร์มตัวใหญ่ */
         h1.app-title { font-size: 42px; color: #007BFF; margin: 0 0 10px 0; font-weight: 700; }
         p.subtitle { font-size: 20px; color: var(--text-sub); margin-bottom: 30px; }
         
@@ -38,15 +41,10 @@
         .role-selection input { transform: scale(1.5); margin-right: 15px; }
 
         .btn-google { background: var(--btn-google); color: var(--btn-google-text); border: 2px solid var(--border-color); padding: 15px 20px; border-radius: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; width: 100%; font-size: 20px; font-weight: 600; font-family: inherit; transition: 0.2s; }
-        .btn-google:hover { background: #f1f1f1; color: #333; }
-        
-        /* ปุ่มสลับโหมด */
-        .theme-toggle { position: absolute; top: 20px; right: 20px; background: var(--card-bg); border: 2px solid var(--border-color); color: var(--text-main); font-size: 24px; padding: 10px; border-radius: 50%; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .btn-google:hover { background: #007BFF; color: white; border-color: #007BFF; }
     </style>
 </head>
 <body>
-    <button class="theme-toggle" onclick="toggleTheme()" title="สลับโหมดสว่าง/มืด">🌓</button>
-
     <div class="login-card">
         <h1 class="app-title">งานดีขอนแก่น</h1>
         <p class="subtitle">แพลตฟอร์มรวมช่างและงานบริการ</p>
@@ -58,7 +56,7 @@
         </div>
 
         <button class="btn-google" id="btn-login">
-            <img src="https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg" width="28" style="margin-right: 15px;">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg" width="28" style="margin-right: 15px; background: white; border-radius: 50%;">
             เข้าสู่ระบบด้วย Google
         </button>
     </div>
@@ -68,7 +66,6 @@
         import { getAuth, signInWithPopup, GoogleAuthProvider } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-auth.js";
         import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-firestore.js";
 
-        // *** ใส่ Config ของคุณ ***
         const firebaseConfig = {
             apiKey: "AIzaSyBCtuNjcjOmDS1Luwg4-B5VoMrnFvlAUFI",
             authDomain: "marketplace-3c894.firebaseapp.com",
@@ -95,17 +92,6 @@
                 window.location.href = "dashboard.html";
             } catch (error) { alert("ล้มเหลว: " + error.message); }
         });
-    </script>
-    <script>
-        // ระบบจำโหมดสี (Light/Dark Mode)
-        const currentTheme = localStorage.getItem('theme') || 'light';
-        document.documentElement.setAttribute('data-theme', currentTheme);
-
-        function toggleTheme() {
-            const theme = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
-            document.documentElement.setAttribute('data-theme', theme);
-            localStorage.setItem('theme', theme);
-        }
     </script>
 </body>
 </html>
