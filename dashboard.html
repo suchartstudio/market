@@ -10,31 +10,26 @@
         body { font-family: 'Chakra Petch', sans-serif; padding: 20px; background-color: #F4F7F6; text-align: center; }
         .card { background: white; padding: 30px; border-radius: 16px; max-width: 500px; margin: 30px auto; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
         .user-profile { background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 20px; text-align: left; }
+        .menu-section { display: flex; flex-direction: column; gap: 12px; margin-bottom: 20px; }
         
-        .menu-section { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; }
-        .menu-btn { padding: 12px; color: white; border: none; border-radius: 8px; cursor: pointer; font-family: inherit; font-size: 16px; font-weight: 600; transition: 0.2s; }
-        .menu-btn:hover { opacity: 0.8; }
+        .menu-btn { padding: 14px; color: white; border: none; border-radius: 8px; cursor: pointer; font-family: inherit; font-size: 16px; font-weight: 600; transition: 0.3s; text-align: left; display: flex; align-items: center; gap: 10px; }
+        .menu-btn:hover { opacity: 0.9; transform: translateY(-2px); }
         
-        /* สีปุ่มตาม Role */
         .btn-customer { background-color: var(--customer-color); }
         .btn-business { background-color: var(--business-color); }
         .btn-freelancer { background-color: var(--freelancer-color); }
-        
-        .btn-logout { background: #dc3545; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-family: inherit; margin-top: 10px; width: 100%;}
+        .btn-logout { background: #dc3545; color: white; border: none; padding: 12px; border-radius: 8px; cursor: pointer; font-family: inherit; font-weight: 600; font-size: 16px; margin-top: 10px; width: 100%; transition: 0.2s;}
+        .btn-logout:hover { background: #c82333; }
     </style>
 </head>
 <body>
     <div class="card">
         <h1>แผงควบคุม (Dashboard)</h1>
+        <div class="user-profile" id="user-info">กำลังโหลดข้อมูลโปรไฟล์...</div>
         
-        <div class="user-profile" id="user-info">
-            กำลังโหลดข้อมูลผู้ใช้...
-        </div>
-
-        <div class="menu-section" id="role-menus">
-            </div>
-
-        <button class="btn-logout" id="btn-logout">ออกจากระบบ</button>
+        <div class="menu-section" id="role-menus"></div>
+        
+        <button class="btn-logout" id="btn-logout">🚪 ออกจากระบบ</button>
     </div>
 
     <script type="module">
@@ -42,69 +37,69 @@
         import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-auth.js";
         import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-firestore.js";
 
-        // *** ใส่ Config ของคุณตรงนี้ ***
         const firebaseConfig = {
             apiKey: "AIzaSyBCtuNjcjOmDS1Luwg4-B5VoMrnFvlAUFI",
             authDomain: "marketplace-3c894.firebaseapp.com",
             projectId: "marketplace-3c894",
             storageBucket: "marketplace-3c894.firebasestorage.app"
         };
-
+        
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
 
-        const userInfoDiv = document.getElementById('user-info');
-        const roleMenusDiv = document.getElementById('role-menus');
-
         onAuthStateChanged(auth, async (user) => {
-            if (user) {
-                // ดึงข้อมูล Role จาก Firestore
+            if (!user) return window.location.href = "index.html";
+            
+            try {
                 const docSnap = await getDoc(doc(db, "users", user.uid));
-                const role = docSnap.exists() ? docSnap.data().role : "ไม่ทราบสถานะ";
-                const name = docSnap.exists() ? docSnap.data().name : "ผู้ใช้งาน";
+                const data = docSnap.exists() ? docSnap.data() : { role: "customer", name: "ผู้ใช้งาน" };
                 
-                // 1. แสดงข้อมูลโปรไฟล์
-                userInfoDiv.innerHTML = `
-                    <b>ชื่อ:</b> ${name} <br>
-                    <b>อีเมล:</b> ${user.email} <br> 
-                    <b>สิทธิ์การใช้งาน:</b> <span style="color:var(--primary-color); font-weight:bold;">${role.toUpperCase()}</span>
+                document.getElementById('user-info').innerHTML = `
+                    <b>👤 ชื่อผู้ใช้:</b> ${data.name} <br>
+                    <b>📧 อีเมล:</b> ${user.email} <br>
+                    <b>🛡️ สิทธิ์การใช้งาน:</b> <span style="color:#007BFF; font-weight:bold;">${data.role.toUpperCase()}</span>
                 `;
 
-                // 2. สร้างเมนูตามสิทธิ์การใช้งาน (Role-based UI)
                 let menusHTML = "";
-                if (role === "customer") {
+                
+                // 🍏 1. เมนูสำหรับลูกค้า (Customer)
+                if (data.role === "customer") {
                     menusHTML = `
-                        <button class="menu-btn btn-customer" onclick="alert('กำลังพัฒนา: ไปหน้าค้นหาสินค้า')">🛒 ค้นหาสินค้าและร้านค้า</button>
-                        <button class="menu-btn btn-customer" onclick="alert('กำลังพัฒนา: ไปหน้าออเดอร์ของฉัน')">📦 ติดตามออเดอร์ของฉัน</button>
+                        <button class="menu-btn btn-customer" onclick="location.href='shop.html'">🛒 เลือกซื้อสินค้าและบริการ</button>
+                        <button class="menu-btn btn-customer" onclick="alert('กำลังพัฒนา: หน้าติดตามออเดอร์ของฉัน')">📦 ตรวจสอบสถานะออเดอร์ของฉัน</button>
                     `;
-                } else if (role === "business") {
+                } 
+                // 🍊 2. เมนูสำหรับเจ้าของร้านค้า (Business)
+                else if (data.role === "business") {
                     menusHTML = `
-                        <button class="menu-btn btn-business" onclick="alert('กำลังพัฒนา: ไปหน้าจัดการร้านค้า')">🏪 ตั้งค่าร้านค้าของฉัน</button>
-                        <button class="menu-btn btn-business" onclick="alert('กำลังพัฒนา: ไปหน้าจัดการสินค้า')">📝 เพิ่ม/ลด รายการสินค้า</button>
-                        <button class="menu-btn btn-business" onclick="alert('กำลังพัฒนา: ไปหน้ารับออเดอร์')">🔔 ดูออเดอร์ที่ลูกค้าสั่ง</button>
+                        <button class="menu-btn btn-business" onclick="location.href='store-setup.html'">🏪 ตั้งค่าข้อมูลร้านค้า & ปักหมุดแผนที่</button>
+                        <button class="menu-btn btn-business" onclick="location.href='my-products.html'">📦 คลังสินค้าภายในร้าน (สต็อก)</button>
+                        <button class="menu-btn btn-business" onclick="location.href='add-product.html'">📝 เพิ่มสินค้าชิ้นใหม่</button>
+                        <button class="menu-btn btn-business" onclick="alert('กำลังพัฒนา: หน้าดูออเดอร์ที่สั่งเข้ามา')">🔔 ออเดอร์จากลูกค้าเข้ามาร้านค้า</button>
                     `;
-                } else if (role === "freelancer") {
+                } 
+                // 🍇 3. เมนูสำหรับผู้รับจ้าง/คนส่งของ (Freelancer)
+                else if (data.role === "freelancer") {
                     menusHTML = `
-                        <button class="menu-btn btn-freelancer" onclick="alert('กำลังพัฒนา: ไปหน้ากระดานประมูล')">🏍️ ค้นหางานส่งของ (ประมูลงาน)</button>
-                        <button class="menu-btn btn-freelancer" onclick="alert('กำลังพัฒนา: ไปหน้างานของฉัน')">✅ งานที่กำลังดำเนินการ</button>
+                        <button class="menu-btn btn-freelancer" onclick="alert('กำลังพัฒนา: หน้ารายการออเดอร์เพื่อแข่ง Bidding')">🏍️ กระดานงาน (แข่งประมูลราคาค่าส่ง)</button>
+                        <button class="menu-btn btn-freelancer" onclick="alert('กำลังพัฒนา: หน้างานที่ฉันรับ')">✅ งานที่กำลังดำเนินการอยู่</button>
                     `;
-                } else {
-                    menusHTML = `<p style="color:red;">ไม่พบเมนูสำหรับสิทธิ์การใช้งานนี้</p>`;
                 }
+                
+                document.getElementById('role-menus').innerHTML = menusHTML;
 
-                roleMenusDiv.innerHTML = menusHTML;
-
-            } else {
-                // ถ้ายังไม่ล็อกอิน เด้งกลับหน้าแรก
-                window.location.href = "index.html"; 
+            } catch (e) {
+                console.error(e);
+                document.getElementById('user-info').innerText = "เกิดข้อผิดพลาดในการดึงข้อมูลสิทธิ์";
             }
         });
 
-        // ปุ่มออกจากระบบ
-        document.getElementById('btn-logout').onclick = async () => {
-            await signOut(auth);
-            window.location.href = "index.html";
+        // ฟังก์ชันออกจากระบบ
+        document.getElementById('btn-logout').onclick = () => {
+            signOut(auth).then(() => {
+                location.href = "index.html";
+            });
         };
     </script>
 </body>
