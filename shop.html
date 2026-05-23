@@ -10,7 +10,14 @@
         h2 { text-align: center; color: #333; margin-bottom: 30px; }
         .product-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; max-width: 1200px; margin: auto; }
         .card { background: white; padding: 20px; border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); display: flex; flex-direction: column; justify-content: space-between; }
+        
+        /* สไตล์สำหรับรูปภาพ */
+        .image-gallery { display: flex; gap: 8px; margin-bottom: 15px; overflow-x: auto; padding-bottom: 5px; }
+        .image-gallery img { width: 80px; height: 80px; object-fit: cover; border-radius: 8px; border: 1px solid #eee; flex-shrink: 0; }
+        .no-image { width: 100%; height: 80px; background: #eee; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: #aaa; margin-bottom: 15px; font-size: 14px; }
+
         .price { color: #28a745; font-weight: bold; font-size: 1.2em; margin: 10px 0; }
+        .stock-info { font-size: 14px; color: #888; margin-bottom: 15px; }
         
         .time-box { background: #eef2f7; padding: 10px; border-radius: 8px; margin: 10px 0; text-align: left; }
         .time-box label { font-size: 14px; font-weight: 600; color: #555; display: block; margin-bottom: 5px; }
@@ -23,9 +30,11 @@
 </head>
 <body>
     <h2>🛒 รายการสินค้าและบริการทั้งหมด</h2>
+    
     <div class="product-grid" id="product-list">
-        <p style="text-align: center; width: 100%;">กำลังโหลดรายการสินค้า...</p>
+        <p style="text-align: center; width: 100%; color: #666;">กำลังโหลดรายการสินค้า...</p>
     </div>
+    
     <a href="dashboard.html" class="back-link">← กลับไปหน้า Dashboard</a>
 
     <script type="module">
@@ -33,12 +42,14 @@
         import { getAuth } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-auth.js";
         import { getFirestore, collection, getDocs, addDoc } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-firestore.js";
 
+        // *** ใส่ Config ของคุณ ***
         const firebaseConfig = {
             apiKey: "AIzaSyBCtuNjcjOmDS1Luwg4-B5VoMrnFvlAUFI",
             authDomain: "marketplace-3c894.firebaseapp.com",
             projectId: "marketplace-3c894",
             storageBucket: "marketplace-3c894.firebasestorage.app"
         };
+        
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
@@ -56,7 +67,7 @@
 
             // คำนวณส่วนต่างเวลา (มิลลิวินาที)
             const timeDiff = deliveryTime.getTime() - now.getTime();
-            const minimumLeadTime = 3 * 60 * 60 * 1000; // 3 ชั่วโมงในหน่วยมิลลิวินาที
+            const minimumLeadTime = 3 * 60 * 60 * 1000; // 3 ชั่วโมง
 
             // 💡 ตรวจสอบเงื่อนไข: ต้องมากกว่า 3 ชั่วโมง
             if (timeDiff < minimumLeadTime) {
@@ -75,15 +86,17 @@
                 quantity: 1,
                 status: "bidding", // เริ่มต้นที่สถานะกำลังประมูล
                 delivery_time: deliveryTime, // เวลาที่ต้องการของ
-                bidding_end_time: biddingEndTime, // เวลาที่หุ่นยนต์ Cloud Function จะตัดสินผู้ชนะ
+                bidding_end_time: biddingEndTime, // เวลาที่ระบบจะตัดสินผู้ชนะ
                 created_at: now
             };
 
             try {
                 await addDoc(collection(db, "orders"), orderData);
-                alert("🎉 สั่งซื้อสินค้าสำเร็จ! ออเดอร์ของคุณเข้าสู่ระบบ Bidding เรียบร้อยแล้ว สามารถติดตามผลได้ที่หน้าออเดอร์");
+                alert("🎉 สั่งซื้อสินค้าสำเร็จ! ออเดอร์ของคุณเข้าสู่ระบบ Bidding เรียบร้อยแล้ว");
+                // เคลียร์ช่องเวลาหลังจากสั่งเสร็จ
+                document.getElementById(inputId).value = '';
             } catch (e) {
-                alert("เกิดข้อผิดพลาด: " + e.message);
+                alert("เกิดข้อผิดพลาดในการสั่งซื้อ: " + e.message);
             }
         }
 
@@ -107,17 +120,30 @@
                     // ผูกฟังก์ชันเข้ากับ window object
                     window[`buy_${product.id}`] = () => createOrder(product, inputId);
                     
+                    // 💡 สร้าง HTML สำหรับแสดงรูปภาพ (ดึงจาก Array images ที่บันทึกไว้)
+                    let imagesHtml = '';
+                    if (data.images && data.images.length > 0) {
+                        imagesHtml = '<div class="image-gallery">';
+                        data.images.forEach(url => {
+                            imagesHtml += `<img src="${url}" alt="รูปสินค้า ${data.name}">`;
+                        });
+                        imagesHtml += '</div>';
+                    } else {
+                        imagesHtml = '<div class="no-image">ไม่มีรูปภาพ</div>';
+                    }
+                    
                     html += `
                         <div class="card">
                             <div>
+                                ${imagesHtml}
                                 <h3 style="margin-top:0; color:#333;">${data.name}</h3>
-                                <p style="color:#666; font-size:14px;">${data.description || 'ไม่มีรายละเอียด'}</p>
+                                <p style="color:#666; font-size:14px; min-height: 40px;">${data.description || 'ไม่มีรายละเอียด'}</p>
                                 <p class="price">${data.price} บาท</p>
-                                <p style="font-size:14px; color:#888;">คงเหลือในสต็อก: ${data.stock} ชิ้น</p>
+                                <p class="stock-info">คงเหลือในสต็อก: ${data.stock} ชิ้น</p>
                             </div>
                             <div>
                                 <div class="time-box">
-                                    <label>📅 ระบุเวลาที่ต้องการรับของ (ล่วงหน้า > 3 ชม.)</label>
+                                    <label>📅 ระบุเวลารับของ (ล่วงหน้า > 3 ชม.)</label>
                                     <input type="datetime-local" id="${inputId}">
                                 </div>
                                 <button class="btn-buy" onclick="window.buy_${product.id}()">🛒 กดสั่งซื้อสินค้า</button>
@@ -127,10 +153,12 @@
                 });
                 listDiv.innerHTML = html;
             } catch (e) {
-                listDiv.innerHTML = "<p style='color:red;'>เกิดข้อผิดพลาดในการโหลดข้อมูลสินค้า</p>";
+                console.error("Error loading products:", e);
+                listDiv.innerHTML = "<p style='text-align:center; width:100%; color:red;'>เกิดข้อผิดพลาดในการโหลดข้อมูลสินค้า</p>";
             }
         }
 
+        // โหลดสินค้าทันทีที่เปิดหน้าเว็บ
         loadProducts();
     </script>
 </body>
