@@ -3,61 +3,79 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ค้นหาและจ้างบริการ - ขอนแก่น แพลตฟอร์ม</title>
-    <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;600&display=swap" rel="stylesheet">
-    
+    <title>ค้นหาช่าง - งานดีขอนแก่น</title>
+    <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
     <style>
-        body { font-family: 'Chakra Petch', sans-serif; padding: 20px; background: #f4f7f6; }
-        h2 { text-align: center; color: #333; margin-bottom: 20px; }
+        :root {
+            --bg-color: #f4f7f6; --card-bg: #ffffff; --text-main: #222222; --text-sub: #666666;
+            --border-color: #dddddd; --box-bg: #f8f9fa; --input-bg: #ffffff;
+        }
+        [data-theme="dark"] {
+            --bg-color: #121212; --card-bg: #1e1e1e; --text-main: #ffffff; --text-sub: #bbbbbb;
+            --border-color: #444444; --box-bg: #2a2a2a; --input-bg: #333333;
+        }
+
+        body { font-family: 'Chakra Petch', sans-serif; background: var(--bg-color); color: var(--text-main); padding: 20px; font-size: 18px; margin: 0; transition: background 0.3s; }
+        h2 { text-align: center; font-size: 32px; color: #007BFF; margin-bottom: 25px; }
         
-        /* กล่องข้อมูลลูกค้าส่วนกลาง */
-        .customer-info-card { background: white; border-radius: 16px; padding: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); max-width: 800px; margin: 0 auto 30px auto; border-top: 4px solid #007BFF; }
-        .customer-info-card label { font-weight: 600; color: #333; display: block; margin: 10px 0 5px 0; }
-        .customer-info-card input[type="text"] { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; font-family: inherit; box-sizing: border-box; }
-        #map { height: 250px; width: 100%; border-radius: 8px; border: 1px solid #ddd; z-index: 1; }
+        .customer-info-card { background: var(--card-bg); border-radius: 16px; padding: 25px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); max-width: 800px; margin: 0 auto 30px auto; border-top: 5px solid #007BFF; border-left: 1px solid var(--border-color); border-right: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color);}
+        .customer-info-card h3 { font-size: 24px; color: var(--text-main); margin-top: 0; }
+        label { font-weight: 600; display: block; margin: 15px 0 8px 0; font-size: 20px; }
+        input[type="text"], input[type="datetime-local"] { width: 100%; padding: 15px; border: 1px solid var(--border-color); border-radius: 10px; font-family: inherit; font-size: 20px; box-sizing: border-box; background: var(--input-bg); color: var(--text-main); }
         
-        .service-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; max-width: 1200px; margin: auto; }
-        .card { background: white; border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); display: flex; flex-direction: column; justify-content: space-between; overflow: hidden; }
-        .card-img { width: 100%; height: 200px; object-fit: cover; background: #eee; }
-        .card-body { padding: 20px; display: flex; flex-direction: column; justify-content: space-between; flex-grow: 1; }
+        #map { height: 300px; width: 100%; border-radius: 10px; border: 1px solid var(--border-color); z-index: 1; margin-bottom: 15px;}
         
-        .price-tag { color: #28a745; font-weight: bold; font-size: 1.2em; margin: 10px 0; }
+        /* ปุ่ม GPS */
+        .btn-gps { background: #17a2b8; color: white; border: none; padding: 12px 20px; border-radius: 10px; font-size: 18px; font-weight: 600; cursor: pointer; width: 100%; display: flex; justify-content: center; align-items: center; gap: 10px; font-family: inherit; margin-bottom: 10px;}
+        .btn-gps:hover { background: #138496; }
+
+        .service-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 25px; max-width: 1200px; margin: auto; }
+        .card { background: var(--card-bg); border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); border: 1px solid var(--border-color); overflow: hidden; display: flex; flex-direction: column; justify-content: space-between; }
+        .card-img { width: 100%; height: 220px; object-fit: cover; background: #eee; }
+        .card-body { padding: 25px; }
+        .card-body h3 { font-size: 24px; margin: 0 0 10px 0; }
+        .card-body p { font-size: 18px; color: var(--text-sub); }
+        .price-tag { color: #28a745 !important; font-weight: 700; font-size: 24px !important; margin: 15px 0; }
         
-        .time-box { background: #eef2f7; padding: 12px; border-radius: 8px; margin: 12px 0; text-align: left; }
-        .time-box label { font-size: 14px; font-weight: 600; color: #555; display: block; margin-bottom: 5px; }
-        .time-box input { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 6px; font-family: inherit; box-sizing: border-box; }
+        .time-box { background: var(--box-bg); padding: 15px; border-radius: 10px; margin: 15px 0; border: 1px solid var(--border-color); }
         
-        .btn-hire { width: 100%; padding: 12px; background: #28a745; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 16px; margin-top: 10px; transition: 0.2s; }
+        .btn-hire { width: 100%; padding: 15px; background: #28a745; color: white; border: none; border-radius: 10px; cursor: pointer; font-weight: bold; font-size: 22px; margin-top: 10px; font-family: inherit;}
         .btn-hire:hover { background: #218838; }
-        .back-link { display: block; text-align: center; margin-top: 30px; color: #666; text-decoration: none; font-size: 14px; }
-        .no-data { text-align: center; width: 100%; color: #888; grid-column: 1 / -1; padding: 40px; }
+        
+        .back-link { display: block; text-align: center; margin-top: 40px; color: var(--text-sub); text-decoration: none; font-size: 20px; font-weight: bold; padding-bottom: 30px;}
+        
+        /* ปุ่มสลับโหมด */
+        .theme-toggle { position: absolute; top: 20px; right: 20px; background: var(--card-bg); border: 2px solid var(--border-color); color: var(--text-main); font-size: 24px; padding: 10px; border-radius: 50%; cursor: pointer; }
     </style>
 </head>
 <body>
-    <h2>🔍 ค้นหาและจ้างงานบริการ</h2>
+    <button class="theme-toggle" onclick="toggleTheme()">🌓</button>
+
+    <h2>🔍 เลือกจ้างช่างและบริการ</h2>
     
     <div class="customer-info-card">
-        <h3 style="margin-top: 0; color: #007BFF;">📍 ข้อมูลสถานที่รับบริการ (ระบุครั้งเดียว)</h3>
+        <h3>📍 ข้อมูลของท่าน (กรอกครั้งเดียวจ้างได้เลย)</h3>
         
-        <label>📞 เบอร์โทรศัพท์ติดต่อของท่าน:</label>
-        <input type="text" id="custPhone" placeholder="เช่น 081-234-5678">
+        <label>📞 เบอร์โทรศัพท์ติดต่อ:</label>
+        <input type="text" id="custPhone" placeholder="เบอร์โทรของท่าน...">
         
-        <label>📌 ปักหมุดสถานที่หน้างาน (คลิกบนแผนที่):</label>
+        <label>📌 ปักหมุดสถานที่หน้างาน:</label>
+        <button type="button" class="btn-gps" id="btn-get-location">🎯 ค้นหาตำแหน่งปัจจุบันของฉันอัตโนมัติ</button>
         <div id="map"></div>
-        <p style="font-size: 13px; color: #dc3545; margin-top: 5px;">* กรุณาคลิกเลือกตำแหน่งบนแผนที่ เพื่อให้ช่างนำทางไปได้ถูกต้อง</p>
+        <p style="font-size: 16px; color: #dc3545; font-weight: bold; margin-top: 5px;">* สามารถเลื่อนจุดปักหมุดบนแผนที่ให้ตรงเป๊ะได้ด้วยตนเอง</p>
         
         <input type="hidden" id="custLat">
         <input type="hidden" id="custLng">
     </div>
 
     <div class="service-grid" id="service-list">
-        <p style="text-align: center; width: 100%; color: #666;">กำลังโหลดรายการบริการ...</p>
+        <p style="text-align: center; width: 100%; font-size: 20px;">กำลังโหลดข้อมูลช่าง...</p>
     </div>
     
-    <a href="dashboard.html" class="back-link">← กลับไปหน้า Dashboard</a>
+    <a href="dashboard.html" class="back-link">← กลับหน้าเมนูหลัก</a>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-app.js";
@@ -75,66 +93,82 @@
         const auth = getAuth(app);
         const db = getFirestore(app);
 
-        // --- ตั้งค่าระบบแผนที่ ---
+        // --- ระบบแผนที่ ---
         let map = L.map('map').setView([16.4322, 102.8236], 13);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
         let marker;
 
-        map.on('click', function(e) {
-            document.getElementById('custLat').value = e.latlng.lat.toFixed(6);
-            document.getElementById('custLng').value = e.latlng.lng.toFixed(6);
-            if (marker) marker.setLatLng(e.latlng);
-            else marker = L.marker(e.latlng).addTo(map);
+        // วางหมุดเมื่อคลิกบนแผนที่
+        map.on('click', function(e) { updateMarker(e.latlng.lat, e.latlng.lng); });
+
+        // ฟังก์ชันดึงตำแหน่งปัจจุบัน (GPS)
+        document.getElementById('btn-get-location').addEventListener('click', () => {
+            const btn = document.getElementById('btn-get-location');
+            btn.innerText = "กำลังค้นหาตำแหน่ง...";
+            
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        updateMarker(position.coords.latitude, position.coords.longitude);
+                        map.setView([position.coords.latitude, position.coords.longitude], 16);
+                        btn.innerText = "🎯 ค้นหาตำแหน่งปัจจุบันของฉันอัตโนมัติ";
+                    },
+                    (error) => {
+                        alert("ไม่สามารถเข้าถึงตำแหน่งได้ กรุณาตรวจสอบการอนุญาต GPS หรือจิ้มแผนที่เองครับ");
+                        btn.innerText = "🎯 ค้นหาตำแหน่งปัจจุบันของฉันอัตโนมัติ";
+                    }
+                );
+            } else {
+                alert("เบราว์เซอร์ของคุณไม่รองรับการค้นหาตำแหน่ง");
+            }
         });
 
-        // --- ฟังก์ชันกดจ้างงาน ---
+        function updateMarker(lat, lng) {
+            document.getElementById('custLat').value = lat.toFixed(6);
+            document.getElementById('custLng').value = lng.toFixed(6);
+            if (marker) marker.setLatLng([lat, lng]);
+            else marker = L.marker([lat, lng]).addTo(map);
+        }
+
+        // --- ระบบจ้างงาน ---
         async function hireService(service, inputId) {
             const user = auth.currentUser;
-            if (!user) return alert("กรุณาล็อกอินเข้าสู่ระบบก่อนทำการจ้างงาน");
+            if (!user) return alert("กรุณาล็อกอินก่อนจ้างงาน");
 
-            // ดึงข้อมูลส่วนตัวจากกล่องด้านบน
             const phone = document.getElementById('custPhone').value;
             const lat = parseFloat(document.getElementById('custLat').value);
             const lng = parseFloat(document.getElementById('custLng').value);
-
-            if (!phone) return alert("กรุณาระบุเบอร์โทรศัพท์ติดต่อในกล่องด้านบน");
-            if (isNaN(lat) || isNaN(lng)) return alert("กรุณาคลิกปักหมุดสถานที่รับบริการบนแผนที่");
-
             const appointmentTimeValue = document.getElementById(inputId).value;
-            if (!appointmentTimeValue) return alert("กรุณาระบุ วัน-เวลา ที่ท่านต้องการรับบริการ");
+
+            if (!phone) return alert("กรุณากรอกเบอร์โทรติดต่อ");
+            if (isNaN(lat) || isNaN(lng)) return alert("กรุณาปักหมุดแผนที่");
+            if (!appointmentTimeValue) return alert("กรุณาเลือกวันและเวลาที่ต้องการให้ช่างมา");
 
             const appointmentTime = new Date(appointmentTimeValue);
-            const now = new Date();
-
-            // เช็คแค่ว่าห้ามเลือกเวลาในอดีต (ยกเลิกกฎ 3 ชม. แล้ว)
-            if (appointmentTime <= now) {
-                return alert("❌ ไม่สามารถเลือกเวลาในอดีตได้ กรุณาเลือกวันและเวลาที่ถูกต้อง");
-            }
+            if (appointmentTime <= new Date()) return alert("กรุณาเลือกเวลาล่วงหน้า ไม่สามารถเลือกเวลาในอดีตได้");
 
             const btn = document.querySelector(`button[onclick*="${service.id}"]`);
-            if(btn) { btn.disabled = true; btn.innerText = "กำลังส่งใบจ้างงาน..."; }
-
-            const orderData = {
-                customer_uid: user.uid,
-                provider_uid: service.provider_uid,
-                service_id: service.id,
-                product_name: service.name,
-                price: service.price,
-                customer_phone: phone, // เพิ่มเบอร์โทร
-                location: { lat: lat, lng: lng }, // เพิ่มพิกัดแผนที่
-                status: "pending",
-                appointment_time: appointmentTime,
-                created_at: now
-            };
+            if(btn) { btn.disabled = true; btn.innerText = "กำลังส่งใบงาน..."; }
 
             try {
-                await addDoc(collection(db, "orders"), orderData);
-                alert(`🎉 ส่งใบจ้างงาน "${service.name}" สำเร็จ! กรุณารอช่างติดต่อกลับหรือยืนยันรับงาน`);
-                document.getElementById(inputId).value = ''; // เคลียร์ช่องเวลา
+                await addDoc(collection(db, "orders"), {
+                    customer_uid: user.uid,
+                    provider_uid: service.provider_uid,
+                    service_id: service.id,
+                    product_name: service.name,
+                    price: service.price,
+                    customer_phone: phone,
+                    location: { lat: lat, lng: lng },
+                    status: "pending",
+                    appointment_time: appointmentTime,
+                    created_at: new Date()
+                });
+                alert(`✅ ส่งใบงานหาช่างสำเร็จ! กรุณารอช่างยืนยัน`);
+                document.getElementById(inputId).value = ''; 
             } catch (e) {
-                alert("เกิดข้อผิดพลาดในการจ้างงาน: " + e.message);
+                alert("ล้มเหลว: " + e.message);
             } finally {
-                if(btn) { btn.disabled = false; btn.innerText = "🤝 กดจ้างงานบริการ (ช่างพร้อมลุย)"; }
+                if(btn) { btn.disabled = false; btn.innerText = "🤝 กดจ้างช่างคนนี้"; }
             }
         }
 
@@ -143,45 +177,48 @@
             try {
                 const querySnapshot = await getDocs(collection(db, "services"));
                 if (querySnapshot.empty) {
-                    listDiv.innerHTML = "<div class='no-data'>😔 ขณะนี้ยังไม่มีผู้ให้บริการลงทะเบียนงานบริการไว้</div>";
+                    listDiv.innerHTML = "<p style='text-align: center; grid-column: 1/-1;'>ยังไม่มีช่างลงทะเบียนรับงาน</p>";
                     return;
                 }
-
                 let html = "";
-                querySnapshot.forEach((serviceDoc) => {
-                    const data = serviceDoc.data();
-                    const service = { id: serviceDoc.id, ...data };
+                querySnapshot.forEach((doc) => {
+                    const data = doc.data();
+                    const service = { id: doc.id, ...data };
                     const inputId = `time-${service.id}`;
                     window[`hire_${service.id}`] = () => hireService(service, inputId);
                     
-                    const imgHtml = data.image_url ? `<img src="${data.image_url}" class="card-img">` : `<div class="card-img" style="display:flex; align-items:center; justify-content:center; color:#aaa;">ไม่มีรูปภาพตัวอย่าง</div>`;
+                    const imgHtml = data.image_url ? `<img src="${data.image_url}" class="card-img">` : `<div class="card-img" style="display:flex; align-items:center; justify-content:center; color:#aaa;">ไม่มีรูป</div>`;
                     
                     html += `
                         <div class="card">
                             ${imgHtml}
                             <div class="card-body">
-                                <div>
-                                    <h3 style="margin-top:0; color:#333;">${data.name}</h3>
-                                    <p style="color:#666; font-size:14px; min-height: 40px;">${data.description || 'ไม่มีรายละเอียดเพิ่มเติม'}</p>
-                                    <p class="price-tag">ราคา: ${data.price} บาท</p>
+                                <h3>${data.name}</h3>
+                                <p>${data.description || 'ไม่มีรายละเอียด'}</p>
+                                <p class="price-tag">ราคา: ${data.price} บาท</p>
+                                <div class="time-box">
+                                    <label>📅 ระบุเวลาให้ช่างเข้างาน:</label>
+                                    <input type="datetime-local" id="${inputId}">
                                 </div>
-                                <div>
-                                    <div class="time-box">
-                                        <label>📅 เลือกวัน-เวลาที่ต้องการให้ช่างเข้าทำงาน:</label>
-                                        <input type="datetime-local" id="${inputId}">
-                                    </div>
-                                    <button class="btn-hire" onclick="window.hire_${service.id}()">🤝 กดจ้างงานบริการ (ช่างพร้อมลุย)</button>
-                                </div>
+                                <button class="btn-hire" onclick="window.hire_${service.id}()">🤝 กดจ้างช่างคนนี้</button>
                             </div>
                         </div>
                     `;
                 });
                 listDiv.innerHTML = html;
-            } catch (e) {
-                listDiv.innerHTML = "<div class='no-data' style='color:red;'>⚠️ เกิดข้อผิดพลาดในการโหลดข้อมูล</div>";
-            }
+            } catch (e) { listDiv.innerHTML = "<p style='color:red;'>เกิดข้อผิดพลาดในการโหลดข้อมูล</p>"; }
         }
         loadAllServices();
+    </script>
+    <script>
+        // ระบบจำโหมดสี
+        const currentTheme = localStorage.getItem('theme') || 'light';
+        document.documentElement.setAttribute('data-theme', currentTheme);
+        function toggleTheme() {
+            const theme = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+            document.documentElement.setAttribute('data-theme', theme);
+            localStorage.setItem('theme', theme);
+        }
     </script>
 </body>
 </html>
