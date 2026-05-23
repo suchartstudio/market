@@ -6,81 +6,49 @@
     <title>ประวัติการจ้างงาน - งานดีขอนแก่น</title>
     <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
-        /* 🎨 ตัวแปรสีรองรับ Dark/Light Mode อัตโนมัติ */
-        :root {
-            --bg-color: #f4f7f6; --card-bg: #ffffff; --text-main: #222222; --text-sub: #666666;
-            --border-color: #dddddd; --box-bg: #f8f9fa; --input-bg: #ffffff; --primary: #28a745;
-        }
-        @media (prefers-color-scheme: dark) {
-            :root {
-                --bg-color: #121212; --card-bg: #1e1e1e; --text-main: #ffffff; --text-sub: #bbbbbb;
-                --border-color: #444444; --box-bg: #2a2a2a; --input-bg: #333333; --primary: #34c759;
-            }
-        }
-
-        body { font-family: 'Chakra Petch', sans-serif; background: var(--bg-color); color: var(--text-main); padding: 20px; font-size: 18px; margin: 0; transition: background 0.3s, color 0.3s; }
+        :root { --bg-color: #f4f7f6; --card-bg: #ffffff; --text-main: #222222; --text-sub: #666666; --border-color: #dddddd; --box-bg: #f8f9fa; --input-bg: #ffffff; --primary: #28a745; }
+        @media (prefers-color-scheme: dark) { :root { --bg-color: #121212; --card-bg: #1e1e1e; --text-main: #ffffff; --text-sub: #bbbbbb; --border-color: #444444; --box-bg: #2a2a2a; --input-bg: #333333; --primary: #34c759; } }
+        body { font-family: 'Chakra Petch', sans-serif; background: var(--bg-color); color: var(--text-main); padding: 20px; font-size: 18px; margin: 0; }
         .container { max-width: 900px; margin: auto; }
         h2 { color: var(--primary); margin-top: 0; text-align: center; font-size: 32px; margin-bottom: 30px; }
-        
-        .booking-card { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 16px; padding: 25px; margin-bottom: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); transition: background 0.3s; }
+        .booking-card { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 16px; padding: 25px; margin-bottom: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
         .booking-details h3 { margin: 0 0 15px 0; font-size: 24px; color: var(--text-main); }
         .booking-details p { margin: 8px 0; font-size: 18px; color: var(--text-sub); }
-        
         .badge { padding: 8px 16px; border-radius: 30px; font-weight: 600; font-size: 16px; display: inline-block; border: 1px solid transparent; }
         .badge-pending { background-color: #fff3cd; color: #856404; border-color: #ffeeba; }
         .badge-accepted { background-color: #d1ecf1; color: #0c5460; border-color: #bee5eb; }
         .badge-completed { background-color: #d4edda; color: #155724; border-color: #c3e6cb; }
         .badge-cancelled { background-color: #f8d7da; color: #721c24; border-color: #f5c6cb; }
-        @media (prefers-color-scheme: dark) {
-            .badge-pending { background-color: #4d4013; color: #ffdf7e; border-color: #665213; }
-            .badge-accepted { background-color: #0c3842; color: #8ee2f1; border-color: #125361; }
-            .badge-completed { background-color: #0f3d1b; color: #8ce4a3; border-color: #155724; }
-            .badge-cancelled { background-color: #4a1318; color: #f8b4bc; border-color: #6b1b23; }
-        }
-
+        @media (prefers-color-scheme: dark) { .badge-pending { background-color: #4d4013; color: #ffdf7e; border-color: #665213; } .badge-accepted { background-color: #0c3842; color: #8ee2f1; border-color: #125361; } .badge-completed { background-color: #0f3d1b; color: #8ce4a3; border-color: #155724; } .badge-cancelled { background-color: #4a1318; color: #f8b4bc; border-color: #6b1b23; } }
         .flex-between { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; margin-top: 20px; padding-top: 20px; border-top: 1px dashed var(--border-color); }
         .time-highlight { color: #007BFF; font-weight: bold; }
         @media (prefers-color-scheme: dark) { .time-highlight { color: #66b0ff; } }
-        
         .btn { border: none; padding: 12px 20px; border-radius: 10px; cursor: pointer; font-family: inherit; font-size: 18px; font-weight: bold; transition: 0.2s; }
         .btn-cancel { background: #dc3545; color: white; }
         .btn-cancel:hover { background: #c82333; }
         .btn-review { background: #ffc107; color: #212529; border: 1px solid #e0a800; }
         .btn-review:hover { background: #e0a800; }
-
         .review-box { background: var(--box-bg); padding: 15px; border-radius: 10px; margin-top: 15px; border: 1px solid var(--border-color); }
         .review-stars { color: #ffc107; font-size: 24px; letter-spacing: 2px; }
-
-        /* 🌟 ระบบ Popup ให้ดาว (Modal) */
         .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.6); display: none; align-items: center; justify-content: center; z-index: 1000; padding: 20px; }
         .modal-content { background: var(--card-bg); padding: 30px; border-radius: 16px; width: 100%; max-width: 500px; border: 1px solid var(--border-color); box-shadow: 0 10px 30px rgba(0,0,0,0.3); text-align: center; }
         .modal-content h3 { margin-top: 0; color: var(--text-main); font-size: 26px; }
-        
-        /* CSS ทริคสำหรับการทำดาวให้กดได้ 1-5 ดาว */
         .star-rating { display: inline-flex; flex-direction: row-reverse; font-size: 50px; cursor: pointer; justify-content: center; margin: 10px 0; }
         .star-rating input { display: none; }
         .star-rating label { color: var(--border-color); transition: 0.2s; cursor: pointer; }
-        .star-rating label:hover,
-        .star-rating label:hover ~ label,
-        .star-rating input:checked ~ label { color: #ffc107; }
-
+        .star-rating label:hover, .star-rating label:hover ~ label, .star-rating input:checked ~ label { color: #ffc107; }
         textarea { width: 100%; padding: 15px; border: 1px solid var(--border-color); border-radius: 10px; font-family: inherit; font-size: 18px; box-sizing: border-box; background: var(--input-bg); color: var(--text-main); margin-bottom: 20px; }
-        
         .modal-actions { display: flex; gap: 15px; }
         .btn-confirm-review { flex: 2; background: var(--primary); color: white; }
         .btn-close-modal { flex: 1; background: var(--box-bg); color: var(--text-main); border: 1px solid var(--border-color); }
-
         .back-link { display: block; text-align: center; margin-top: 40px; color: var(--text-sub); text-decoration: none; font-size: 20px; font-weight: bold; padding-bottom: 30px; }
-        .no-data { text-align: center; color: var(--text-sub); padding: 50px; font-size: 20px; border: 2px dashed var(--border-color); border-radius: 16px; }
     </style>
 </head>
 <body>
     <div class="container">
         <h2>📅 ประวัติและตารางงานที่จองไว้</h2>
         <div id="loading-msg" style="text-align: center; color: var(--text-sub); margin: 15px 0;">กำลังเชื่อมต่อฐานข้อมูล...</div>
-        
         <div id="bookings-list"></div>
-
         <a href="dashboard.html" class="back-link">← กลับไปหน้าเมนูหลัก</a>
     </div>
 
@@ -88,7 +56,6 @@
         <div class="modal-content">
             <h3>⭐ รีวิวช่าง</h3>
             <p style="color: var(--text-sub); font-size: 18px;">บริการ: <b id="reviewServiceName" style="color: var(--text-main);"></b></p>
-            
             <div class="star-rating">
                 <input type="radio" id="star5" name="rating" value="5"><label for="star5">★</label>
                 <input type="radio" id="star4" name="rating" value="4"><label for="star4">★</label>
@@ -96,10 +63,10 @@
                 <input type="radio" id="star2" name="rating" value="2"><label for="star2">★</label>
                 <input type="radio" id="star1" name="rating" value="1"><label for="star1">★</label>
             </div>
-
             <textarea id="reviewComment" rows="3" placeholder="เขียนความประทับใจ หรือข้อเสนอแนะให้ช่าง..."></textarea>
             
             <input type="hidden" id="reviewOrderId">
+            <input type="hidden" id="reviewServiceId">
 
             <div class="modal-actions">
                 <button class="btn btn-close-modal" onclick="closeReviewModal()">ยกเลิก</button>
@@ -111,7 +78,8 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-app.js";
         import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-auth.js";
-        import { getFirestore, collection, query, where, onSnapshot, doc, updateDoc } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-firestore.js";
+        // 💡 สังเกตว่าผมเพิ่ม addDoc เข้ามาในบรรทัดนี้ด้วย
+        import { getFirestore, collection, query, where, onSnapshot, doc, updateDoc, addDoc } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-firestore.js";
 
         // *** ใส่ Config ของคุณ ***
         const firebaseConfig = {
@@ -129,11 +97,12 @@
             else listenToMyBookings(user.uid);
         });
 
-        // เปิด-ปิด Modal รีวิว
-        window.openReviewModal = function(orderId, serviceName) {
+        // เปิด Modal และฝัง ID บริการไว้
+        window.openReviewModal = function(orderId, serviceName, serviceId) {
             document.getElementById('reviewModal').style.display = 'flex';
             document.getElementById('reviewServiceName').innerText = serviceName;
             document.getElementById('reviewOrderId').value = orderId;
+            document.getElementById('reviewServiceId').value = serviceId; // ฝังค่า Service ID
             
             document.getElementById('reviewComment').value = '';
             document.querySelectorAll('input[name="rating"]').forEach(s => s.checked = false);
@@ -143,9 +112,10 @@
             document.getElementById('reviewModal').style.display = 'none';
         };
 
-        // ยืนยันการส่งรีวิวเข้าฐานข้อมูล (บันทึกลงใน Document Order นั้นๆ)
+        // ยืนยันการส่งรีวิว (บันทึกลง 2 ที่)
         document.getElementById('btn-submit-review').addEventListener('click', async () => {
             const orderId = document.getElementById('reviewOrderId').value;
+            const serviceId = document.getElementById('reviewServiceId').value;
             const comment = document.getElementById('reviewComment').value;
             const ratingInput = document.querySelector('input[name="rating"]:checked');
             
@@ -156,11 +126,21 @@
             btn.innerText = "กำลังบันทึก...";
 
             try {
+                // 1. อัปเดตที่ตารางใบงาน (เพื่อให้หน้าจอลูกค้าขึ้นว่ารีวิวแล้ว)
                 await updateDoc(doc(db, "orders", orderId), {
                     review_rating: parseInt(ratingInput.value),
                     review_comment: comment,
                     reviewed_at: new Date()
                 });
+
+                // 2. 🌟 บันทึกลงตารางรีวิวสาธารณะ (เพื่อให้หน้าหลักดึงไปโชว์)
+                await addDoc(collection(db, "reviews"), {
+                    service_id: serviceId,
+                    rating: parseInt(ratingInput.value),
+                    comment: comment,
+                    created_at: new Date()
+                });
+
                 alert("🎉 ขอบคุณสำหรับรีวิว! ระบบบันทึกข้อมูลเรียบร้อยแล้ว");
                 closeReviewModal();
             } catch (e) {
@@ -171,7 +151,7 @@
             }
         });
 
-        // ดึงข้อมูลการจ้างงานแบบ Real-time
+        // ดึงข้อมูล Real-time
         function listenToMyBookings(customerUid) {
             const listDiv = document.getElementById('bookings-list');
             const loadingMsg = document.getElementById('loading-msg');
@@ -192,7 +172,6 @@
                 bookings.sort((a, b) => b.created_at.seconds - a.created_at.seconds);
 
                 bookings.forEach((order) => {
-                    // ผูกฟังก์ชันยกเลิกงาน
                     window[`cancelOrder_${order.id}`] = async () => {
                         if(confirm(`ยืนยันการยกเลิกคิวงาน "${order.product_name}" ใช่หรือไม่?`)) {
                             await updateDoc(doc(db, "orders", order.id), { status: "cancelled" });
@@ -204,7 +183,6 @@
                     
                     let statusBadge = ''; let statusText = ''; let actionHtml = '';
 
-                    // ตั้งค่าป้ายสถานะและปุ่มตามสถานะของงาน
                     if (order.status === 'pending') {
                         statusText = '⏳ รอยืนยันจากช่าง'; statusBadge = 'badge-pending';
                         actionHtml = `<button class="btn btn-cancel" onclick="window.cancelOrder_${order.id}()">❌ ยกเลิกคิวงาน</button>`;
@@ -212,8 +190,6 @@
                         statusText = '🛠️ ช่างกำลังดำเนินการ'; statusBadge = 'badge-accepted';
                     } else if (order.status === 'completed') {
                         statusText = '✅ บริการเสร็จสิ้น'; statusBadge = 'badge-completed';
-                        
-                        // ถ้าระบบบันทึกรีวิวแล้ว ให้แสดงผลรีวิวแทนปุ่ม
                         if (order.review_rating) {
                             const starsStr = "★".repeat(order.review_rating) + "☆".repeat(5 - order.review_rating);
                             actionHtml = `
@@ -223,8 +199,8 @@
                                 </div>
                             `;
                         } else {
-                            // ถ้ายังไม่รีวิว ให้โชว์ปุ่มสีเหลือง
-                            actionHtml = `<button class="btn btn-review" onclick="openReviewModal('${order.id}', '${order.product_name}')">⭐ ให้คะแนนและรีวิว</button>`;
+                            // 💡 ส่ง ID ของ Service ไปด้วย
+                            actionHtml = `<button class="btn btn-review" onclick="openReviewModal('${order.id}', '${order.product_name}', '${order.service_id}')">⭐ ให้คะแนนและรีวิว</button>`;
                         }
                     } else if (order.status === 'cancelled') {
                         statusText = '❌ ยกเลิกแล้ว'; statusBadge = 'badge-cancelled';
